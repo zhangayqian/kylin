@@ -205,7 +205,7 @@ public class FlinkExecutable extends AbstractExecutable {
                     //flink on yarn specific option (pattern : -yn 1)
                     if (configOptionKey.startsWith("-y") && !entry.getValue().isEmpty()) {
                         sb.append(" ").append(configOptionKey).append(" ").append(entry.getValue());
-                    } else {
+                    } else if (!configOptionKey.startsWith("-y")){
                         //flink on yarn specific option (pattern : -yD taskmanager.network.memory.min=536346624)
                         sb.append(" ").append(configOptionKey).append("=").append(entry.getValue());
                     }
