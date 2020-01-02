@@ -435,7 +435,7 @@ public abstract class KylinConfigBase implements Serializable {
     }
 
     public boolean isResourceStoreReconnectEnabled() {
-        return Boolean.parseBoolean(getOptional("kylin.resourcestore.reconnect-enabled", FALSE));
+        return Boolean.parseBoolean(getOptional("kylin.resourcestore.reconnect-enabled", TRUE));
     }
 
     public int getResourceStoreReconnectBaseMs() {
