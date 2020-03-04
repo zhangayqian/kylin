@@ -177,6 +177,12 @@
             <artifactId>spring-test</artifactId>
         </dependency>
 
+        <!-- Spring Session -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session</artifactId>
+        </dependency>
+
         <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.security</groupId>
