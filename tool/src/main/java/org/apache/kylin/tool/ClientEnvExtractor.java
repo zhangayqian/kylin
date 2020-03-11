@@ -38,7 +38,7 @@ import org.apache.kylin.common.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.io.Files;
+import org.apache.kylin.shaded.com.google.common.io.Files;
 
 public class ClientEnvExtractor extends AbstractInfoExtractor {
     private static final Logger logger = LoggerFactory.getLogger(ClientEnvExtractor.class);

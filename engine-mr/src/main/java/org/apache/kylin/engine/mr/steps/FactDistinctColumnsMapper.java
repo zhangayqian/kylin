@@ -20,6 +20,7 @@ package org.apache.kylin.engine.mr.steps;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -45,11 +46,11 @@ import org.apache.kylin.metadata.model.TblColRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import org.apache.kylin.shaded.com.google.common.hash.HashFunction;
+import org.apache.kylin.shaded.com.google.common.hash.Hasher;
+import org.apache.kylin.shaded.com.google.common.hash.Hashing;
 
 /**
  */
@@ -358,7 +359,7 @@ public class FactDistinctColumnsMapper<KEYIN> extends FactDistinctColumnsMapperB
                 Hasher hc = hf.newHasher();
                 String colValue = row[rowkeyColIndex[i]];
                 if (colValue != null) {
-                    rowHashCodes[i] = hc.putString(colValue).hash().asBytes();
+                    rowHashCodes[i] = hc.putString(colValue, Charset.defaultCharset()).hash().asBytes();
                 } else {
                     rowHashCodes[i] = hc.putInt(0).hash().asBytes();
                 }
@@ -382,7 +383,7 @@ public class FactDistinctColumnsMapper<KEYIN> extends FactDistinctColumnsMapperB
                 String colValue = row[rowkeyColIndex[i]];
                 if (colValue == null)
                     colValue = "0";
-                byte[] bytes = hc.putString(colValue).hash().asBytes();
+                byte[] bytes = hc.putString(colValue, Charset.defaultCharset()).hash().asBytes();
                 rowHashCodesLong[i] = (Bytes.toLong(bytes) + i);//add column ordinal to the hash value to distinguish between (a,b) and (b,a)
             }
 

@@ -20,9 +20,9 @@ package org.apache.kylin.engine.mr.steps;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.kylin.common.KylinConfig;
@@ -43,10 +43,10 @@ import org.apache.kylin.measure.hllc.HLLCounter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
+import org.apache.kylin.shaded.com.google.common.base.Preconditions;
+import org.apache.kylin.shaded.com.google.common.hash.HashFunction;
+import org.apache.kylin.shaded.com.google.common.hash.Hasher;
+import org.apache.kylin.shaded.com.google.common.hash.Hashing;
 
 public class CalculateStatsFromBaseCuboidMapper extends KylinMapper<Text, Text, Text, Text> {
     private static final Logger logger = LoggerFactory.getLogger(CalculateStatsFromBaseCuboidMapper.class);
@@ -146,7 +146,7 @@ public class CalculateStatsFromBaseCuboidMapper extends KylinMapper<Text, Text, 
             Hasher hc = hf.newHasher();
             String colValue = row[i];
             if (colValue != null) {
-                rowHashCodes[i] = hc.putString(colValue).hash().asBytes();
+                rowHashCodes[i] = hc.putString(colValue, Charset.defaultCharset()).hash().asBytes();
             } else {
                 rowHashCodes[i] = hc.putInt(0).hash().asBytes();
             }
@@ -170,7 +170,7 @@ public class CalculateStatsFromBaseCuboidMapper extends KylinMapper<Text, Text, 
             String colValue = row[i];
             if (colValue == null)
                 colValue = "0";
-            byte[] bytes = hc.putString(colValue).hash().asBytes();
+            byte[] bytes = hc.putString(colValue, Charset.defaultCharset()).hash().asBytes();
             rowHashCodesLong[i] = (Bytes.toLong(bytes) + i);//add column ordinal to the hash value to distinguish between (a,b) and (b,a)
         }
 

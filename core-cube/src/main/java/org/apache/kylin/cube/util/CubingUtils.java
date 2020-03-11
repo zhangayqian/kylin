@@ -19,6 +19,7 @@
 package org.apache.kylin.cube.util;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -42,11 +43,11 @@ import org.apache.kylin.source.IReadableTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Maps;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
+import org.apache.kylin.shaded.com.google.common.collect.HashMultimap;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.shaded.com.google.common.hash.HashFunction;
+import org.apache.kylin.shaded.com.google.common.hash.Hasher;
+import org.apache.kylin.shaded.com.google.common.hash.Hashing;
 
 /**
  */
@@ -87,7 +88,7 @@ public class CubingUtils {
                 Hasher hc = hf.newHasher();
                 final String cell = row.get(flatDesc.getRowKeyColumnIndexes()[i]);
                 if (cell != null) {
-                    row_hashcodes[i] = hc.putString(cell).hash().asBytes();
+                    row_hashcodes[i] = hc.putString(cell, Charset.forName("utf8")).hash().asBytes();
                 } else {
                     row_hashcodes[i] = hc.putInt(0).hash().asBytes();
                 }
