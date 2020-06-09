@@ -237,7 +237,7 @@ public class FlinkCubeHFile extends AbstractApplication implements Serializable 
 
                                 for (int i = 0; i < cfNum; i++) {
                                     KeyValue outputValue = keyValueCreators.get(i).create(value.f0, inputMeasures);
-                                    out.collect(new Tuple2<>(new RowKeyWritable(outputValue.getKey()), outputValue));
+                                    out.collect(new Tuple2<>(new RowKeyWritable(outputValue.createKeyOnly(false).getKey()), outputValue));
                                 }
                             }
                         }
