@@ -62,6 +62,7 @@ import org.apache.kylin.job.engine.JobEngineConfig;
 import org.apache.kylin.job.exception.JobException;
 import org.apache.kylin.job.exception.SchedulerException;
 import org.apache.kylin.job.execution.AbstractExecutable;
+import org.apache.kylin.job.execution.CardinalityExecutable;
 import org.apache.kylin.job.execution.CheckpointExecutable;
 import org.apache.kylin.job.execution.DefaultChainedExecutable;
 import org.apache.kylin.job.execution.ExecutableState;
@@ -982,8 +983,12 @@ public class JobService extends BasicService implements InitializingBean {
         switch (jobSearchMode) {
             case CHECKPOINT_ONLY:
                 return executable instanceof CheckpointExecutable;
+            case CARDINALITY_ONLY:
+                return executable instanceof CardinalityExecutable;
+            case SNAPSHOT_ONLY:
+                return executable instanceof LookupSnapshotBuildJob;
             case ALL:
-                return executable instanceof CheckpointExecutable || executable instanceof CubingJob;
+                return executable instanceof DefaultChainedExecutable;
             case CUBING_ONLY:
             default:
                 return executable instanceof CubingJob;
@@ -1070,6 +1075,6 @@ public class JobService extends BasicService implements InitializingBean {
     }
 
     public enum JobSearchMode {
-        CUBING_ONLY, CHECKPOINT_ONLY, ALL
+        CUBING_ONLY, CHECKPOINT_ONLY, CARDINALITY_ONLY, SNAPSHOT_ONLY, ALL
     }
 }
