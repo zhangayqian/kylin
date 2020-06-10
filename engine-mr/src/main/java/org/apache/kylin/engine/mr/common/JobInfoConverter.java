@@ -61,6 +61,20 @@ public class JobInfoConverter {
         }
     }
 
+    public static JobInstance parseToJobInstanceQuietly(AbstractExecutable job, Map<String, Output> outputs) {
+        try {
+            if (job instanceof CheckpointExecutable) {
+                return parseToJobInstance((CheckpointExecutable)job, outputs);
+            } else if (job instanceof CubingJob) {
+                return parseToJobInstance((CubingJob)job, outputs);
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            logger.error("Failed to parse job instance: uuid={}", job, e);
+            return null;
+        }
+    }
 
     public static JobInstance parseToJobInstance(CubingJob job, Map<String, Output> outputs) {
         if (job == null) {
