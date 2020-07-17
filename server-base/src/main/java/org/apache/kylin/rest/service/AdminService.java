@@ -36,6 +36,7 @@ import org.apache.kylin.common.util.OrderedProperties;
 import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.rest.constant.Constant;
 import org.apache.kylin.rest.job.StorageCleanupJob;
+import org.apache.kylin.rest.response.GeneralResponse;
 import org.apache.kylin.storage.hbase.HBaseConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,6 +108,15 @@ public class AdminService extends BasicService {
         }
         String[] args = new String[] { "-delete", "true" };
         job.execute(args);
+    }
+
+    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN)
+    public GeneralResponse getConfigAsString() {
+        String config = KylinConfig.getInstanceFromEnv().exportAllToString();
+        GeneralResponse configRes = new GeneralResponse();
+        configRes.put("config", config);
+
+        return configRes;
     }
 
     public String getPublicConfig() throws IOException {

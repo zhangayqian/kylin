@@ -96,11 +96,7 @@ public class AdminController extends BasicController {
     @RequestMapping(value = "/config", method = { RequestMethod.GET }, produces = { "application/json" })
     @ResponseBody
     public GeneralResponse getConfig() throws IOException {
-        String config = KylinConfig.getInstanceFromEnv().exportAllToString();
-        GeneralResponse configRes = new GeneralResponse();
-        configRes.put("config", config);
-
-        return configRes;
+        return adminService.getConfigAsString();
     }
 
     @RequestMapping(value = "/public_config", method = { RequestMethod.GET }, produces = { "application/json" })
