@@ -59,6 +59,7 @@ import org.apache.kylin.common.util.HadoopUtil;
 import org.apache.kylin.common.util.JsonUtil;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.job.common.PatternedLogger;
+import org.apache.kylin.job.constant.ExecutableConstants;
 import org.apache.kylin.job.exception.ExecuteException;
 import org.apache.kylin.job.execution.AbstractExecutable;
 import org.apache.kylin.job.execution.ExecutableContext;
@@ -77,6 +78,8 @@ import com.google.common.collect.Sets;
 public class NSparkExecutable extends AbstractExecutable {
 
     private static final Logger logger = LoggerFactory.getLogger(NSparkExecutable.class);
+
+    protected final PatternedLogger stepLogger = new PatternedLogger(logger);
 
     protected void setSparkSubmitClassName(String className) {
         this.setParam(MetadataConstants.P_CLASS_NAME, className);
@@ -102,6 +105,15 @@ public class NSparkExecutable extends AbstractExecutable {
 
     @Override
     protected ExecuteResult doWork(ExecutableContext context) throws ExecuteException {
+        stepLogger.setILogListener((infoKey, info) -> {
+                    // only care two properties here
+                    if (ExecutableConstants.YARN_APP_ID.equals(infoKey)
+                            || ExecutableConstants.YARN_APP_URL.equals(infoKey)) {
+                        System.out.println(info);
+                        getManager().addJobInfo(getId(), info);
+                    }
+                }
+        );
         //context.setLogPath(getSparkDriverLogHdfsPath(context.getConfig()));
         final KylinConfig config = wrapConfig(context);
 
