@@ -122,12 +122,18 @@ public class MetaDumpUtil {
         logger.warn("===== KylinConfig will load from uri: {}", metaDir);
         Path path = new Path(metaDir);
         logger.warn("===== KylinConfig will load from path: {}", path.toString());
-        try (InputStream is = path.getFileSystem(HadoopUtil.getCurrentConfiguration()).open(new Path(metaDir))) {
+
+        try {
+            InputStream is =
+                    path.getFileSystem(HadoopUtil.getCurrentConfiguration()).open(new Path(metaDir));
             logger.warn("===== KylinConfig will load from InputStream");
             Properties prop = KylinConfig.streamToProps(is);
             return KylinConfig.createKylinConfig(prop);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } catch (Exception ee) {
+            logger.error("load kylin config from hdfs error: ", ee);
+            throw new RuntimeException(ee);
         }
     }
 }
