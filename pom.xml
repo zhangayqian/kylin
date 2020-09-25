@@ -1321,7 +1321,8 @@
           <configuration>
             <packagingExcludes>
               WEB-INF/lib/servlet-api-*.jar,
-              WEB-INF/lib/zookeeper-*.jar
+              WEB-INF/lib/zookeeper-*.jar,
+              WEB_INF/lib/guava-14.0.jar
             </packagingExcludes>
           </configuration>
         </plugin>
