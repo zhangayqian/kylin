@@ -119,8 +119,11 @@ public class MetaDumpUtil {
         logger.info("Ready to load KylinConfig from uri: {}", uri);
         StorageURL url = StorageURL.valueOf(uri);
         String metaDir = url.getParameter("path") + "/" + KylinConfig.KYLIN_CONF_PROPERTIES_FILE;
+        logger.warn("===== KylinConfig will load from uri: {}", metaDir);
         Path path = new Path(metaDir);
+        logger.warn("===== KylinConfig will load from path: {}", path.toString());
         try (InputStream is = path.getFileSystem(HadoopUtil.getCurrentConfiguration()).open(new Path(metaDir))) {
+            logger.warn("===== KylinConfig will load from InputStream");
             Properties prop = KylinConfig.streamToProps(is);
             return KylinConfig.createKylinConfig(prop);
         } catch (IOException e) {

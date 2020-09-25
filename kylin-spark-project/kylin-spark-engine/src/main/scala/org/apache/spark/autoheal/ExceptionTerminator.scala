@@ -38,17 +38,22 @@ object ExceptionTerminator extends Logging {
     val env = KylinBuildEnv.get()
     val result = rl.throwable match {
       case _: OutOfMemoryError =>
+        logError("===== OutOfMemoryError with broadcast.")
         resolveOutOfMemoryError(env, rl.throwable)
       case throwable: ClassNotFoundException =>
+        logError("===== throwable ", throwable)
         Failed(throwable.getMessage, throwable)
       case _ =>
+        logError("===== incMemory ")
         incMemory(env)
     }
     result match {
       case Success(conf) =>
         KylinBuildEnv.get().buildJobInfos.recordJobRetryInfos(RetryInfo(conf, rl.throwable))
         eventLoop.post(RunJob())
-      case Failed(message, throwable) => eventLoop.post(JobFailed(message, throwable))
+      case Failed(message, throwable) =>
+        logError("===== The resule is Failed, " + message, throwable)
+        eventLoop.post(JobFailed(message, throwable))
     }
   }
 
