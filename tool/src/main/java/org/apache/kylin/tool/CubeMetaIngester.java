@@ -193,7 +193,6 @@ public class CubeMetaIngester extends AbstractApplication {
                 }
             }
             tableDesc.setUuid(RandomUtil.randomUUID().toString());
-            tableDesc.setLastModified(0);
             metadataManager.saveSourceTable(tableDesc, targetProjectName);
             requiredResources.add(tableDesc.getResourcePath());
         }
