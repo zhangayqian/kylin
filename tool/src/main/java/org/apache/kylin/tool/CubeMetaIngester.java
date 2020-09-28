@@ -192,15 +192,18 @@ public class CubeMetaIngester extends AbstractApplication {
                     logger.warn("Overwriting the old table desc: {}", tableDesc.getIdentity());
                 }
             }
-            tableDesc.setUuid(RandomUtil.randomUUID().toString());
-            metadataManager.saveSourceTable(tableDesc, targetProjectName);
+            if (existing == null) {
+                tableDesc.setUuid(RandomUtil.randomUUID().toString());
+                tableDesc.setLastModified(0);
+                metadataManager.saveSourceTable(tableDesc, targetProjectName);
+            }
             requiredResources.add(tableDesc.getResourcePath());
         }
 
         DataModelManager modelManager = DataModelManager.getInstance(kylinConfig);
         for (DataModelDesc dataModelDesc : srcModelManager.listDataModels()) {
             checkExesting(modelManager.getDataModelDesc(dataModelDesc.getName()), "model", dataModelDesc.getName());
-            modelManager.getDataModelDesc(dataModelDesc.getName()).setProjectName(targetProjectName);
+            dataModelDesc.setProjectName(targetProjectName);
             requiredResources.add(DataModelDesc.concatResourcePath(dataModelDesc.getName()));
         }
 
