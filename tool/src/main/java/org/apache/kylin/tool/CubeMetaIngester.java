@@ -200,6 +200,7 @@ public class CubeMetaIngester extends AbstractApplication {
         DataModelManager modelManager = DataModelManager.getInstance(kylinConfig);
         for (DataModelDesc dataModelDesc : srcModelManager.listDataModels()) {
             checkExesting(modelManager.getDataModelDesc(dataModelDesc.getName()), "model", dataModelDesc.getName());
+            modelManager.getDataModelDesc(dataModelDesc.getName()).setProjectName(targetProjectName);
             requiredResources.add(DataModelDesc.concatResourcePath(dataModelDesc.getName()));
         }
 
