@@ -72,7 +72,14 @@ function retrieveDependency() {
     KYLIN_SPARK_JARS_HOME="${KYLIN_HOME}/spark/jars"
     if [[ -d "/usr/hdp/current/hdinsight-zookeeper" && $hdp_version == "2"* ]]
     then
-       echo "The current Hadoop environment is HDI3, will replace some jars package for ${KYLIN_HOME}/spark/jars"
+       echo "The current Hadoop environment is HDI3, will remove ${KYLIN_HOME}/tomcat/webapps/kylin/WEB-INF/lib/guava-14.0.jar and replace some jars package for ${KYLIN_HOME}/spark/jars"
+       unzip ${KYLIN_HOME}/tomcat/webapps/kylin.war
+       if [[ -f ${KYLIN_HOME}/tomcat/webapps/kylin/WEB-INF/lib/guava-14.0.jar ]]
+       then
+          rm -rf ${KYLIN_HOME}/tomcat/webapps/kylin/WEB-INF/lib/guava-14.0.jar
+          jar -cvfM0 ${KYLIN_HOME}/tomcat/webapps/kylin.war ${KYLIN_HOME}/tomcat/webapps/kylin/
+       fi
+
        if [[ -d "${KYLIN_SPARK_JARS_HOME}" ]]
        then
           if [[ -f ${KYLIN_HOME}/hdi3_spark_jars_flag ]]
