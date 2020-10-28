@@ -85,11 +85,11 @@ Tags:3.x,4.x
 You can put the tag in the specification heading, so that all scenarios in this specification will have this tag.
 You can also tag your own test spec to make it easier for you to run your own test cases.
 
-### About Project
+### About Kylin Project
 There are two project names already occupied, they are `generic_test_project` and `pushdown_test_project`. 
   
 Every time you run this test, @befroe_suit method will be execute in advance to create `generic_test_project`.  And the model and cube in this project are universal, and the cube has been fully built. They include dimensions and measures as much as possible. When you need to use a built cube to perform tests, you may use it.
 
-`pushdown_test_project` used to compare sql query result. This is a empty project.
+`pushdown_test_project` used to compare sql query result. This is an empty project.
 
 Please refer to https://docs.gauge.org/writing-specifications.html?os=macos&language=python&ide=vscode learn more.
