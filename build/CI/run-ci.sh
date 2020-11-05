@@ -58,6 +58,7 @@ cat > kylin-all/conf/kylin.properties <<EOL
 kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://metastore-db:3306/metastore,username=kylin,password=kylin,maxActive=10,maxIdle=10
 kylin.env.zookeeper-connect-string=write-zookeeper:2181
 kylin.job.scheduler.default=100
+kylin.engine.spark-conf.spark.shuffle.service.enabled=false
 kylin.query.pushdown.runner-class-name=org.apache.kylin.query.pushdown.PushDownRunnerSparkImpl
 EOL
 
