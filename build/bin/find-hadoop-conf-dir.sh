@@ -69,12 +69,47 @@ function find_hadoop_conf_dir() {
                 valid_conf_dir=false
                 continue
             fi
-            
+
             verbose "kylin_hadoop_conf_dir is $result"
             export kylin_hadoop_conf_dir=$result
+
+            if [ ! -f $result/hive-site.xml ]
+            then
+            copyHiveSite
+            fi
+
             return
         fi
     done
 }
+
+function copyHiveSite() {
+    if [ -n "$HIVE_CONF" ]
+    then
+        if [ -f "$HIVE_CONF/hive-site.xml" ]
+        then
+            hive_site=$HIVE_CONF/hive-site.xml
+        fi
+    elif [ -n "$HIVE_HOME" ]
+    then
+        if [ -f "$HIVE_HOME/conf/hive-site.xml" ]
+        then
+            hive_site=$HIVE_HOME/conf/hive-site.xml
+        fi
+    elif [ -f /etc/hive/conf/hive-site.xml ]
+    then
+        hive_site=/etc/hive/conf/hive-site.xml
+    fi
+
+    if [ -n "$hive_site" ]
+    then
+        echo "copy $hive_site to $kylin_hadoop_conf_dir"
+        cp "$hive_site" "$kylin_hadoop_conf_dir"
+    else
+        echo "hive-site.xml is missing"
+    fi
+    return
+}
+
 find_hadoop_conf_dir
 echo "export kylin_hadoop_conf_dir=$kylin_hadoop_conf_dir" > ${dir}/cached-hadoop-conf-dir.sh
