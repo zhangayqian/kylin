@@ -128,7 +128,7 @@ ENV SPARK_CONF_DIR=/opt/spark-$SPARK_VERSION-bin-hadoop${SPARK_HADOOP_VERSION}/c
 RUN curl -fSL "${SPARK_URL}" -o /tmp/spark.tar.gz \
     && tar -zxvf /tmp/spark.tar.gz -C /opt/ \
     && rm -f /tmp/spark.tar.gz \
-    && cp $HIVE_HOME/conf/hive-site.xml $SPARK_HOME/conf \
+    && ln -s $HIVE_HOME/conf/hive-site.xml $SPARK_HOME/conf/hive-site.xml \
     && cp $SPARK_HOME/yarn/*.jar $HADOOP_HOME/share/hadoop/yarn/lib
 
 #COPY spark-$SPARK_VERSION-bin-hadoop${SPARK_HADOOP_VERSION}.tgz /tmp/spark.tar.gz
