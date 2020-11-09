@@ -48,7 +48,7 @@ public class GTScanRequestBuilder {
     private int storagePushDownLimit = Integer.MAX_VALUE;// storage can quit scanning safely when $toragePushDownLimit aggregated rows are produced. 
     private StorageLimitLevel storageLimitLevel = StorageLimitLevel.NO_LIMIT;
     private long startTime = -1;
-    private long timeout = -1;
+    private long timeout = 10;
     private String storageBehavior = null;
 
     public GTScanRequestBuilder setInfo(GTInfo info) {
