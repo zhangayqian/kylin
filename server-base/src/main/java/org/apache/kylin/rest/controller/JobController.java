@@ -196,7 +196,7 @@ public class JobController extends BasicController {
         checkRequiredArg("job_id", jobId);
         checkRequiredArg("step_id", stepId);
         checkRequiredArg("project", project);
-        logger.info({"----------download log file")
+        logger.info("----------download log file");
         logger.info(jobId);
         logger.info(stepId);
         logger.info(project);
