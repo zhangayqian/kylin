@@ -161,11 +161,7 @@
     <div class="modal-header">
         <h4>{{stepAttrToShow == 'cmd' ? 'Parameters' : 'Output'}}
             <i ng-if="stepAttrToShow == 'output' && step.loadingOp" class="fa fa-spinner fa-spin"></i></h4>
-      <ul class="dropdown-menu" role="menu">
-        <li>
           <a ng-click="DownloadAllLogs()" tooltip="The output log shows the first and last 100 lines by default. To view all the output, please click to download the log file.">DownloadAllLogs</a >
-        </li>
-      </ul>
     </div>
     <div class="modal-body">
         <pre>{{stepAttrToShow == 'cmd' ? step.exec_cmd : (step.loadingOp ? "Loading..." : !!(step.cmd_output)?step.cmd_output:'No Data Available')}}</pre>
