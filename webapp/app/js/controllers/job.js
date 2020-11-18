@@ -314,6 +314,18 @@ KylinApp
         });
       }
 
+      //任务Log日志文件下载：TODO 需要三个入参~
+      $scope.DownloadAllLogs =function() {
+        //TODO 判断入参
+        alert("下载log文件~")
+        // if (!job){
+        //   SweetAlert.swal('', "No job selected.", 'info');
+        //   return;
+        // }
+        var downloadUrl = Config.service.url + 'jobs/'+'test000'+'/steps/'+ 'test111' +'/log'+ '?project=testKylin';
+        $window.open(downloadUrl);
+      }
+
       $scope.diagnosisJob =function(job) {
         if (!job){
           SweetAlert.swal('', "No job selected.", 'info');
