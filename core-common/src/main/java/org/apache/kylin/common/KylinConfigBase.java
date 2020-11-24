@@ -194,8 +194,7 @@ public abstract class KylinConfigBase implements Serializable {
      * @return properties which contained in propertyKeys
      */
     protected Properties getProperties(Collection<String> propertyKeys) {
-        Map<String, String> envMap = System.getenv();
-        StrSubstitutor sub = new StrSubstitutor(envMap);
+        final StrSubstitutor sub = getSubstitutor();
 
         Properties filteredProperties = new Properties();
         for (Entry<Object, Object> entry : this.properties.entrySet()) {
@@ -204,6 +203,14 @@ public abstract class KylinConfigBase implements Serializable {
             }
         }
         return filteredProperties;
+    }
+
+    protected StrSubstitutor getSubstitutor() {
+        final Map<String, Object> all = Maps.newHashMap();
+        all.putAll((Map) properties);
+        all.putAll(System.getenv());
+
+        return new StrSubstitutor(all);
     }
 
     protected Properties getRawAllProperties() {
