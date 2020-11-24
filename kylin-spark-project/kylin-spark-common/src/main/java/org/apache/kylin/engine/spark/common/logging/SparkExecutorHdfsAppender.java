@@ -42,8 +42,8 @@ public class SparkExecutorHdfsAppender extends AbstractHdfsLogAppender {
 
     private static final long A_DAY_MILLIS = 24 * 60 * 60 * 1000L;
     private static final long A_HOUR_MILLIS = 60 * 60 * 1000L;
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-    private SimpleDateFormat hourFormat = new SimpleDateFormat("HH");
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
+    private SimpleDateFormat hourFormat = new SimpleDateFormat("HH", Locale.ROOT);
 
     @VisibleForTesting
     String outPutPath;
@@ -229,7 +229,7 @@ public class SparkExecutorHdfsAppender extends AbstractHdfsLogAppender {
     @VisibleForTesting
     String getRootPathName() {
         if ("job".equals(getCategory())) {
-            return parseHdfsWordingDir() + "/" + getProject() + "/spark_logs";
+            return parseHdfsWordingDir() + "/" + getProject() + "/spark_logs/executor/";
         } else if ("sparder".equals(getCategory())) {
             return parseHdfsWordingDir() + "/_sparder_logs";
         } else {
