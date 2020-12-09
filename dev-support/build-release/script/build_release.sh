@@ -72,7 +72,7 @@ KYLIN_PACKAGE_BRANCH_HADOOP3=${GIT_BRANCH_HADOOP3:-master-hadoop3}
 ASF_USERNAME=${ASF_USERNAME:-xxyu}
 RELEASE_VERSION=${RELEASE_VERSION:-3.1.2}
 NEXT_RELEASE_VERSION=${NEXT_RELEASE_VERSION:-3.1.3}
-RUNNING_CI=${RUNNING_CI:1}
+RUNNING_CI=${RUNNING_CI:-1}
 GIT_REPO_URL=${GIT_REPO_URL:-https://github.com/apache/kylin.git}
 
 export source_release_folder=/root/kylin-release-folder/
@@ -131,7 +131,7 @@ fi
 
 # Build first package for Hadoop2
 build/script/package.sh
-if [[ "$RUNNING_CI" == "1" ]]; then
+if [[ $RUNNING_CI == "1" ]]; then
     cp dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz ${ci_package_folder}
     cd ${ci_package_folder}
     tar -zxf dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz
@@ -140,10 +140,13 @@ if [[ "$RUNNING_CI" == "1" ]]; then
     rm -rf apache-kylin-${RELEASE_VERSION}-bin
     cd -
 fi
-tar -zxf dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz
-mv apache-kylin-${RELEASE_VERSION}-bin apache-kylin-${RELEASE_VERSION}-bin-hbase1x
-tar -cvzf ~/dist/dev/kylin/apache-kylin-${KYLIN_PACKAGE_VERSION_RC}/apache-kylin-${RELEASE_VERSION}-bin-hbase1x.tar.gz apache-kylin-${RELEASE_VERSION}-bin-hbase1x
-rm -rf apache-kylin-${RELEASE_VERSION}-bin-hbase1x
+
+if [[ "$RELEASE_ENABLE" == "1" ]]; then
+  tar -zxf dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz
+  mv apache-kylin-${RELEASE_VERSION}-bin apache-kylin-${RELEASE_VERSION}-bin-hbase1x
+  tar -cvzf ~/dist/dev/kylin/apache-kylin-${KYLIN_PACKAGE_VERSION_RC}/apache-kylin-${RELEASE_VERSION}-bin-hbase1x.tar.gz apache-kylin-${RELEASE_VERSION}-bin-hbase1x
+  rm -rf apache-kylin-${RELEASE_VERSION}-bin-hbase1x
+fi
 
 #build/script/package.sh -P cdh5.7
 #tar -zxf dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz
