@@ -131,10 +131,10 @@ fi
 
 # Build first package for Hadoop2
 build/script/package.sh
-if [[ $RUNNING_CI == "1" ]]; then
+if [[ "$RUNNING_CI" == "1" ]]; then
     cp dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz ${ci_package_folder}
     cd ${ci_package_folder}
-    tar -zxf dist/apache-kylin-${RELEASE_VERSION}-bin.tar.gz
+    tar -zxf apache-kylin-${RELEASE_VERSION}-bin.tar.gz
     mv apache-kylin-${RELEASE_VERSION}-bin apache-kylin-bin
     tar -cvzf apache-kylin-bin.tar.gz apache-kylin-bin
     rm -rf apache-kylin-${RELEASE_VERSION}-bin
