@@ -125,6 +125,11 @@ public class ClassUtil {
                     break;
                 if (preferJarKeyWord == null)
                     break;
+                if (url.getPath().contains(System.getenv("KYLIN_HOME"))) {
+                    logger.info("KYLIN_HOME is" + System.getenv("KYLIN_HOME"));
+                    logger.debug("It's better to load the jar package under the Hadoop directory.");
+                    break;
+                }
             } while (true);
 
             String toReturn = url.getPath();
