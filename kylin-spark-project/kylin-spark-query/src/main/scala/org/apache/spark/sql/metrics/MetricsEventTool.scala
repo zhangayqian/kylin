@@ -27,31 +27,16 @@ import org.apache.spark.sql.execution.ui.{SparkListenerDriverAccumUpdates, Spark
 
 object MetricsEventTool extends Logging {
 
-  // SparkListenerJobStart
-  // SparkListenerJobEnd
-
-
-  // SparkListenerStageSubmitted
-  // SparkListenerStageCompleted
-
-  // SparkListenerTaskEnd
-
-  // SparkListenerSQLExecutionStart
-  // SparkListenerSQLExecutionEnd
-
-  // SparkListenerExecutorMetricsUpdate
-  // SparkListenerDriverAccumUpdates
-
   def verbose(event: SparkListenerEvent): Unit = {
 
     event match {
       case jobEvent: SparkListenerJobStart => {
-        dumpProperties(jobEvent.properties)
         val executionIdString = jobEvent.properties.getProperty(SQLExecution.EXECUTION_ID_KEY)
 
         if (executionIdString == null) {
           // This is not a job created by SQL
           logInfo("Cannot happened.")
+          return
         }
         var str = "ExecutionId -> " + executionIdString + " : "
         val stages = jobEvent.stageInfos.iterator
@@ -61,14 +46,13 @@ object MetricsEventTool extends Logging {
           str += i.toString()
         }
         logInfo("Job " + jobEvent.jobId + " is started, info " + str)
+        jobEvent.properties.list(System.out)
       }
 
 
       case stageEvent: SparkListenerStageSubmitted => {
-        dumpProperties(stageEvent.properties)
         logInfo("Stage " + stageEvent.stageInfo.stageId + ", " + stageEvent.stageInfo.name + ", "
-          + stageEvent.stageInfo.details + "," + stageEvent.properties.stringPropertyNames().toArray.mkString(",") + " is started.")
-
+          + stageEvent.stageInfo.details + " is started.")
         stageEvent.properties.list(System.out)
       }
 
@@ -98,6 +82,7 @@ object MetricsEventTool extends Logging {
       case stageEvent: SparkListenerStageCompleted => {
         logInfo("Stage " + stageEvent.stageInfo.stageId + ", " + stageEvent.stageInfo.name + ", "
           + stageEvent.stageInfo.details + " is completed.")
+        // Extend here !
         logInfo("All task returned " + stageEvent.stageInfo.taskMetrics.resultSize + " records .")
       }
 
@@ -132,17 +117,7 @@ object MetricsEventTool extends Logging {
         logInfo("MetricsUpdate at executor " + metricsEvent.execId + ", details " + str)
       }
 
-
       case _ => logInfo("Unknown " + event.getClass + ".")
     }
-  }
-
-  def dumpProperties(properties: Properties): String = {
-    var str = ""
-    val keyList = properties.keySet().iterator()
-    while (keyList.hasNext) {
-      str += properties.getProperty(keyList.next().toString)
-    }
-    str
   }
 }

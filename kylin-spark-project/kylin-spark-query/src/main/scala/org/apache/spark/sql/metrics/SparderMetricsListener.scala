@@ -242,15 +242,15 @@ class SparderMetricsListener(
       executionId,
       toStoredNodes(planGraph.nodes),
       planGraph.edges)
-    kvstore.write(graphToStore)
-
-    val exec = getOrCreateExecution(executionId)
-    exec.description = description
-    exec.details = details
-    exec.physicalPlanDescription = physicalPlanDescription
-    exec.metrics = sqlPlanMetrics
-    exec.submissionTime = time
-    update(exec)
+//    kvstore.write(graphToStore)
+//
+//    val exec = getOrCreateExecution(executionId)
+//    exec.description = description
+//    exec.details = details
+//    exec.physicalPlanDescription = physicalPlanDescription
+//    exec.metrics = sqlPlanMetrics
+//    exec.submissionTime = time
+//    update(exec)
   }
 
   private def onQueryExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
