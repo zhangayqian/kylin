@@ -20,7 +20,6 @@ package org.apache.kylin.rest.metrics;
 
 import java.nio.charset.Charset;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -29,14 +28,11 @@ import org.apache.hadoop.metrics2.MetricsException;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.QueryContext;
-import org.apache.kylin.common.QueryContextFacade;
 import org.apache.kylin.metrics.MetricsManager;
+import org.apache.kylin.metrics.QuerySparkMetrics;
 import org.apache.kylin.metrics.lib.impl.RecordEvent;
 import org.apache.kylin.metrics.lib.impl.TimedRecordEvent;
-import org.apache.kylin.metrics.property.QueryCubePropertyEnum;
-import org.apache.kylin.metrics.property.QueryPropertyEnum;
-import org.apache.kylin.metrics.property.QueryRPCPropertyEnum;
-import org.apache.kylin.query.enumerator.OLAPQuery;
+import org.apache.kylin.metrics.property.*;
 import org.apache.kylin.rest.request.SQLRequest;
 import org.apache.kylin.rest.response.SQLResponse;
 import org.slf4j.Logger;
@@ -70,9 +66,9 @@ public class QueryMetricsFacade {
         return hashFunc.hashString(sql, Charset.forName("UTF-8")).asLong();
     }
 
-    public static void updateMetrics(SQLRequest sqlRequest, SQLResponse sqlResponse) {
+    public static void updateMetrics(String queryId, SQLRequest sqlRequest, SQLResponse sqlResponse) {
         updateMetricsToLocal(sqlRequest, sqlResponse);
-        updateMetricsToReservoir(sqlRequest, sqlResponse);
+        updateMetricsToReservoir(queryId, sqlRequest, sqlResponse);
     }
 
     private static void updateMetricsToLocal(SQLRequest sqlRequest, SQLResponse sqlResponse) {
@@ -92,7 +88,7 @@ public class QueryMetricsFacade {
     /**
      * report query related metrics
      */
-    private static void updateMetricsToReservoir(SQLRequest sqlRequest, SQLResponse sqlResponse) {
+    private static void updateMetricsToReservoir(String queryId, SQLRequest sqlRequest, SQLResponse sqlResponse) {
         if (!KylinConfig.getInstanceFromEnv().isKylinMetricsReporterForQueryEnabled()) {
             return;
         }
@@ -100,6 +96,21 @@ public class QueryMetricsFacade {
         if (user == null) {
             user = "unknown";
         }
+
+
+        QuerySparkMetrics.QueryExecutionMetrics queryExecutionMetrics = QuerySparkMetrics.getQueryExecutionMetricsMap().get(queryId);
+        if (queryExecutionMetrics != null) {
+            RecordEvent queryMetricsEvent = new TimedRecordEvent(
+                    KylinConfig.getInstanceFromEnv().getKylinMetricsSubjectQuery());
+            setSparkExecutionWrapper(queryMetricsEvent, user, sqlRequest.getSql(),
+                    sqlResponse.isStorageCacheUsed() ? "CACHE" : "PARQUET", queryId, queryExecutionMetrics.getExecutionId(),
+                    sqlRequest.getProject(), sqlResponse.getCube(), sqlResponse.getCuboidIds(), sqlResponse.getThrowable());
+
+            //setSparkExecutionMetrics();
+        }
+
+        /*
+
         for (QueryContext.RPCStatistics entry : QueryContextFacade.current().getRpcStatisticsList()) {
             RecordEvent rpcMetricsEvent = new TimedRecordEvent(
                     KylinConfig.getInstanceFromEnv().getKylinMetricsSubjectQueryRpcCall());
@@ -155,82 +166,105 @@ public class QueryMetricsFacade {
             //For update query level metrics
             MetricsManager.getInstance().update(queryMetricsEvent);
         }
+
+         */
+
     }
 
     private static String norm(String project) {
         return project.toUpperCase(Locale.ROOT);
     }
 
-    private static void setRPCWrapper(RecordEvent metricsEvent, String projectName, String realizationName,
-            String rpcServer, Throwable throwable) {
-        metricsEvent.put(QueryRPCPropertyEnum.PROJECT.toString(), projectName);
-        metricsEvent.put(QueryRPCPropertyEnum.REALIZATION.toString(), realizationName);
-        metricsEvent.put(QueryRPCPropertyEnum.RPC_SERVER.toString(), rpcServer);
-        metricsEvent.put(QueryRPCPropertyEnum.EXCEPTION.toString(),
+    private static void setStageWrapper(RecordEvent metricsEvent, String projectName, String realizationName,
+                                        String queryId, long executionId, long jobId, long stageId, boolean isSuccess) {
+        metricsEvent.put(QuerySparkStageEnum.PROJECT.toString(), projectName);
+        metricsEvent.put(QuerySparkStageEnum.REALIZATION.toString(), realizationName);
+        metricsEvent.put(QuerySparkStageEnum.QUERY_ID.toString(), queryId);
+        metricsEvent.put(QuerySparkStageEnum.EXECUTION_ID.toString(), executionId);
+        metricsEvent.put(QuerySparkStageEnum.JOB_ID.toString(), jobId);
+        metricsEvent.put(QuerySparkStageEnum.STAGE_ID.toString(), stageId);
+        metricsEvent.put(QuerySparkStageEnum.IF_SUCCESS.toString(), isSuccess);
+    }
+
+    private static void setStageMetrics(RecordEvent metricsEvent, long resultSize, long executorDeserializeTime, long executorDeserializeCpuTime, long executorRunTime,
+                                        long executorCpuTime, long jvmGCTime, long resultSerializationTime, long memoryBytesSpilled,
+                                        long diskBytesSpilled, long peakExecutionMemory) {
+        metricsEvent.put(QuerySparkStageEnum.RESULT_SIZE.toString(), resultSize);
+        metricsEvent.put(QuerySparkStageEnum.EXECUTOR_DESERIALIZE_TIME.toString(), executorDeserializeTime);
+        metricsEvent.put(QuerySparkStageEnum.EXECUTOR_DESERIALIZE_CPU_TIME.toString(), executorDeserializeCpuTime);
+        metricsEvent.put(QuerySparkStageEnum.EXECUTOR_RUN_TIME.toString(), executorRunTime);
+        metricsEvent.put(QuerySparkStageEnum.EXECUTOR_CPU_TIME.toString(), executorCpuTime);
+        metricsEvent.put(QuerySparkStageEnum.JVM_GC_TIME.toString(), jvmGCTime);
+        metricsEvent.put(QuerySparkStageEnum.RESULT_SERIALIZATION_TIME.toString(), resultSerializationTime);
+        metricsEvent.put(QuerySparkStageEnum.MEMORY_BYTE_SPILLED.toString(), memoryBytesSpilled);
+        metricsEvent.put(QuerySparkStageEnum.DISK_BYTES_SPILLED.toString(), diskBytesSpilled);
+        metricsEvent.put(QuerySparkStageEnum.PEAK_EXECUTION_MEMORY.toString(), peakExecutionMemory);
+    }
+
+    private static void setSparkJobWrapper(RecordEvent metricsEvent, String projectName, String realizationName,
+                                           String queryId, long executionId, long jobId, boolean isSuccess) {
+        metricsEvent.put(QuerySparkJobEnum.PROJECT.toString(), projectName);
+        metricsEvent.put(QuerySparkJobEnum.REALIZATION.toString(), realizationName);
+        metricsEvent.put(QuerySparkJobEnum.QUERY_ID.toString(), queryId);
+        metricsEvent.put(QuerySparkJobEnum.EXECUTION_ID.toString(), executionId);
+        metricsEvent.put(QuerySparkJobEnum.JOB_ID.toString(), jobId);
+        metricsEvent.put(QuerySparkJobEnum.IF_SUCCESS.toString(), isSuccess);
+    }
+
+    private static void setSparkJobMetrics(RecordEvent metricsEvent, long resultSize, long executorDeserializeTime, long executorDeserializeCpuTime, long executorRunTime,
+                                        long executorCpuTime, long jvmGCTime, long resultSerializationTime, long memoryBytesSpilled,
+                                        long diskBytesSpilled, long peakExecutionMemory) {
+        metricsEvent.put(QuerySparkJobEnum.RESULT_SIZE.toString(), resultSize);
+        metricsEvent.put(QuerySparkJobEnum.EXECUTOR_DESERIALIZE_TIME.toString(), executorDeserializeTime);
+        metricsEvent.put(QuerySparkJobEnum.EXECUTOR_DESERIALIZE_CPU_TIME.toString(), executorDeserializeCpuTime);
+        metricsEvent.put(QuerySparkJobEnum.EXECUTOR_RUN_TIME.toString(), executorRunTime);
+        metricsEvent.put(QuerySparkJobEnum.EXECUTOR_CPU_TIME.toString(), executorCpuTime);
+        metricsEvent.put(QuerySparkJobEnum.JVM_GC_TIME.toString(), jvmGCTime);
+        metricsEvent.put(QuerySparkJobEnum.RESULT_SERIALIZATION_TIME.toString(), resultSerializationTime);
+        metricsEvent.put(QuerySparkJobEnum.MEMORY_BYTE_SPILLED.toString(), memoryBytesSpilled);
+        metricsEvent.put(QuerySparkJobEnum.DISK_BYTES_SPILLED.toString(), diskBytesSpilled);
+        metricsEvent.put(QuerySparkJobEnum.PEAK_EXECUTION_MEMORY.toString(), peakExecutionMemory);
+    }
+
+    private static void setSparkExecutionWrapper(RecordEvent metricsEvent, String user, String sql, String queryType,
+                                                  String queryId, long executionId, String projectName, String realizationName,
+                                                  String cuboidIds, Throwable throwable) {
+        metricsEvent.put(QuerySparkExecutionEnum.USER.toString(), user);
+        metricsEvent.put(QuerySparkExecutionEnum.ID_CODE.toString(), getSqlHashCode(sql));
+        metricsEvent.put(QuerySparkExecutionEnum.SQL.toString(), sql);
+        metricsEvent.put(QuerySparkExecutionEnum.TYPE.toString(), queryType);
+        metricsEvent.put(QuerySparkExecutionEnum.QUERY_ID.toString(), queryId);
+        metricsEvent.put(QuerySparkExecutionEnum.EXECUTION_ID.toString(), executionId);
+        metricsEvent.put(QuerySparkExecutionEnum.PROJECT.toString(), projectName);
+        metricsEvent.put(QuerySparkExecutionEnum.REALIZATION.toString(), realizationName);
+        metricsEvent.put(QuerySparkExecutionEnum.CUBOID_IDS.toString(), cuboidIds);
+        metricsEvent.put(QuerySparkExecutionEnum.EXCEPTION.toString(),
                 throwable == null ? "NULL" : throwable.getClass().getName());
     }
 
-    private static void setRPCStats(RecordEvent metricsEvent, long callTimeMs, long skipCount, long scanCount,
-            long returnCount, long aggrCount) {
-        metricsEvent.put(QueryRPCPropertyEnum.CALL_TIME.toString(), callTimeMs);
-        metricsEvent.put(QueryRPCPropertyEnum.SKIP_COUNT.toString(), skipCount); //Number of skips on region servers based on region meta or fuzzy filter
-        metricsEvent.put(QueryRPCPropertyEnum.SCAN_COUNT.toString(), scanCount); //Count scanned by region server
-        metricsEvent.put(QueryRPCPropertyEnum.RETURN_COUNT.toString(), returnCount);//Count returned by region server
-        metricsEvent.put(QueryRPCPropertyEnum.AGGR_FILTER_COUNT.toString(), scanCount - returnCount); //Count filtered & aggregated by coprocessor
-        metricsEvent.put(QueryRPCPropertyEnum.AGGR_COUNT.toString(), aggrCount); //Count aggregated by coprocessor
+    private static void setSparkExecutionMetrics(RecordEvent metricsEvent, long sqlDuration, long totalScanCount, long totalScanBytes,
+                                                 long resultCount, long executionDuration, long resultSize, long executorDeserializeTime,
+                                                 long executorDeserializeCpuTime, long executorRunTime, long executorCpuTime,
+                                                 long jvmGCTime, long resultSerializationTime, long memoryBytesSpilled,
+                                                 long diskBytesSpilled, long peakExecutionMemory) {
+        metricsEvent.put(QuerySparkExecutionEnum.SQL_DURATION.toString(), sqlDuration);
+        metricsEvent.put(QuerySparkExecutionEnum.TOTAL_SCAN_COUNT.toString(), totalScanCount);
+        metricsEvent.put(QuerySparkExecutionEnum.TOTAL_SCAN_BYTES.toString(), totalScanBytes);
+        metricsEvent.put(QuerySparkExecutionEnum.RESULT_COUNT.toString(), resultCount);
+        metricsEvent.put(QuerySparkExecutionEnum.EXECUTION_DURATION.toString(), executionDuration);
+
+        metricsEvent.put(QuerySparkExecutionEnum.RESULT_SIZE.toString(), resultSize);
+        metricsEvent.put(QuerySparkExecutionEnum.EXECUTOR_DESERIALIZE_TIME.toString(), executorDeserializeTime);
+        metricsEvent.put(QuerySparkExecutionEnum.EXECUTOR_DESERIALIZE_CPU_TIME.toString(), executorDeserializeCpuTime);
+        metricsEvent.put(QuerySparkExecutionEnum.EXECUTOR_RUN_TIME.toString(), executorRunTime);
+        metricsEvent.put(QuerySparkExecutionEnum.EXECUTOR_CPU_TIME.toString(), executorCpuTime);
+        metricsEvent.put(QuerySparkExecutionEnum.JVM_GC_TIME.toString(), jvmGCTime);
+        metricsEvent.put(QuerySparkExecutionEnum.RESULT_SERIALIZATION_TIME.toString(), resultSerializationTime);
+        metricsEvent.put(QuerySparkExecutionEnum.MEMORY_BYTE_SPILLED.toString(), memoryBytesSpilled);
+        metricsEvent.put(QuerySparkExecutionEnum.DISK_BYTES_SPILLED.toString(), diskBytesSpilled);
+        metricsEvent.put(QuerySparkExecutionEnum.PEAK_EXECUTION_MEMORY.toString(), peakExecutionMemory);
     }
 
-    private static void setCubeWrapper(RecordEvent metricsEvent, String projectName, String cubeName,
-            String segmentName, long sourceCuboidId, long targetCuboidId, long filterMask) {
-        metricsEvent.put(QueryCubePropertyEnum.PROJECT.toString(), projectName);
-        metricsEvent.put(QueryCubePropertyEnum.CUBE.toString(), cubeName);
-        metricsEvent.put(QueryCubePropertyEnum.SEGMENT.toString(), segmentName);
-        metricsEvent.put(QueryCubePropertyEnum.CUBOID_SOURCE.toString(), sourceCuboidId);
-        metricsEvent.put(QueryCubePropertyEnum.CUBOID_TARGET.toString(), targetCuboidId);
-        metricsEvent.put(QueryCubePropertyEnum.IF_MATCH.toString(), sourceCuboidId == targetCuboidId);
-        metricsEvent.put(QueryCubePropertyEnum.FILTER_MASK.toString(), filterMask);
-    }
-
-    private static void setCubeStats(RecordEvent metricsEvent, long callCount, long callTimeSum, long callTimeMax,
-            long skipCount, long scanCount, long returnCount, long aggrCount, boolean ifSuccess, double weightPerHit) {
-        metricsEvent.put(QueryCubePropertyEnum.CALL_COUNT.toString(), callCount);
-        metricsEvent.put(QueryCubePropertyEnum.TIME_SUM.toString(), callTimeSum);
-        metricsEvent.put(QueryCubePropertyEnum.TIME_MAX.toString(), callTimeMax);
-        metricsEvent.put(QueryCubePropertyEnum.SKIP_COUNT.toString(), skipCount);
-        metricsEvent.put(QueryCubePropertyEnum.SCAN_COUNT.toString(), scanCount);
-        metricsEvent.put(QueryCubePropertyEnum.RETURN_COUNT.toString(), returnCount);
-        metricsEvent.put(QueryCubePropertyEnum.AGGR_FILTER_COUNT.toString(), scanCount - returnCount);
-        metricsEvent.put(QueryCubePropertyEnum.AGGR_COUNT.toString(), aggrCount);
-        metricsEvent.put(QueryCubePropertyEnum.IF_SUCCESS.toString(), ifSuccess);
-        metricsEvent.put(QueryCubePropertyEnum.WEIGHT_PER_HIT.toString(), weightPerHit);
-    }
-
-    private static void setQueryWrapper(RecordEvent metricsEvent, String user, String sql, String queryType,
-            String projectName, String realizationName, int realizationType, Throwable throwable) {
-        metricsEvent.put(QueryPropertyEnum.USER.toString(), user);
-        metricsEvent.put(QueryPropertyEnum.ID_CODE.toString(), getSqlHashCode(sql));
-        metricsEvent.put(QueryPropertyEnum.SQL.toString(), sql);
-        metricsEvent.put(QueryPropertyEnum.TYPE.toString(), queryType);
-        metricsEvent.put(QueryPropertyEnum.PROJECT.toString(), projectName);
-        metricsEvent.put(QueryPropertyEnum.REALIZATION.toString(), realizationName);
-        metricsEvent.put(QueryPropertyEnum.REALIZATION_TYPE.toString(), realizationType);
-        metricsEvent.put(QueryPropertyEnum.EXCEPTION.toString(),
-                throwable == null ? "NULL" : throwable.getClass().getName());
-    }
-
-    private static void setQueryStats(RecordEvent metricsEvent, long callTimeMs, long returnCountByCalcite,
-            long returnCountByStorage) {
-        metricsEvent.put(QueryPropertyEnum.TIME_COST.toString(), callTimeMs);
-        metricsEvent.put(QueryPropertyEnum.CALCITE_RETURN_COUNT.toString(), returnCountByCalcite);
-        metricsEvent.put(QueryPropertyEnum.STORAGE_RETURN_COUNT.toString(), returnCountByStorage);
-        long countAggrAndFilter = returnCountByStorage - returnCountByCalcite;
-        if (countAggrAndFilter < 0) {
-            countAggrAndFilter = 0;
-            logger.warn(returnCountByStorage + " rows returned by storage less than " + returnCountByCalcite
-                    + " rows returned by calcite");
-        }
-        metricsEvent.put(QueryPropertyEnum.AGGR_FILTER_COUNT.toString(), countAggrAndFilter);
-    }
 
     private static void update(QueryMetrics queryMetrics, SQLResponse sqlResponse) {
         try {

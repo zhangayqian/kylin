@@ -68,6 +68,7 @@ import org.apache.kylin.cache.cachemanager.MemcachedCacheManager;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.QueryContext;
 import org.apache.kylin.common.QueryContextFacade;
+import org.apache.kylin.metrics.QuerySparkMetrics;
 import org.apache.kylin.common.debug.BackdoorToggles;
 import org.apache.kylin.common.exceptions.ResourceLimitExceededException;
 import org.apache.kylin.common.persistence.ResourceStore;
@@ -470,7 +471,7 @@ public class QueryService extends BasicService {
             sqlResponse.setDuration(queryContext.getAccumulatedMillis());
             logQuery(queryContext.getQueryId(), sqlRequest, sqlResponse);
             try {
-                recordMetric(sqlRequest, sqlResponse);
+                recordMetric(queryContext.getQueryId(), sqlRequest, sqlResponse);
             } catch (Throwable th) {
                 logger.warn("Write metric error.", th);
             }
@@ -585,8 +586,8 @@ public class QueryService extends BasicService {
                 checkCondition(!BackdoorToggles.getDisableCache(), "query cache disabled in BackdoorToggles");
     }
 
-    protected void recordMetric(SQLRequest sqlRequest, SQLResponse sqlResponse) throws UnknownHostException {
-        QueryMetricsFacade.updateMetrics(sqlRequest, sqlResponse);
+    protected void recordMetric(String queryId, SQLRequest sqlRequest, SQLResponse sqlResponse) throws UnknownHostException {
+        QueryMetricsFacade.updateMetrics(queryId, sqlRequest, sqlResponse);
         QueryMetrics2Facade.updateMetrics(sqlRequest, sqlResponse);
     }
 
@@ -1188,7 +1189,7 @@ public class QueryService extends BasicService {
 
                     realizations.add(realizationName);
                 }
-                queryContext.setContextRealization(ctx.id, realizationName, realizationType);
+                QuerySparkMetrics.setQueryRealization(queryContext.getQueryId(), realizationName, realizationType);
             }
 
 

@@ -37,10 +37,7 @@ import org.apache.kylin.query.monitor.SparderContextCanary
 import org.apache.kylin.spark.classloader.ClassLoaderUtils
 import org.apache.spark.{SparkConf, SparkContext, SparkEnv}
 import org.apache.spark.sql.execution.datasource.KylinSourceStrategy
-import org.apache.spark.sql.execution.ui.SQLAppStatusListener
 import org.apache.spark.sql.metrics.SparderMetricsListener
-import org.apache.spark.status.ElementTrackingStore
-import org.apache.spark.util.kvstore.InMemoryStore
 import org.apache.spark.utils.YarnInfoFetcherUtils
 
 // scalastyle:off
@@ -53,9 +50,6 @@ object SparderContext extends Logging {
 
   @volatile
   var master_app_url: String = _
-
-  @volatile
-  var sparkMetricsStore: ElementTrackingStore = _
 
   def getOriginalSparkSession: SparkSession = withClassLoad {
     if (spark == null || spark.sparkContext.isStopped) {
@@ -157,10 +151,7 @@ object SparderContext extends Logging {
                     .enableHiveSupport()
                     .getOrCreateKylinSession()
               }
-              val conf = sparkSession.sparkContext.conf
-              val memoryStore = new InMemoryStore()
-              sparkMetricsStore = new ElementTrackingStore(memoryStore, conf)
-              val appStatusListener = new SparderMetricsListener(conf, sparkMetricsStore, true)
+              val appStatusListener = new SparderMetricsListener()
               sparkSession.sparkContext.addSparkListener(appStatusListener)
 
               spark = sparkSession

@@ -17,676 +17,98 @@
 
 package org.apache.spark.sql.metrics
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.function.Function
-import java.util.Date
-import java.util.concurrent.atomic.AtomicLong
-
-import org.apache.commons.lang3.StringEscapeUtils
-import org.apache.spark.JobExecutionStatus
+import org.apache.kylin.metrics.QuerySparkMetrics
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler._
-import org.apache.spark.sql.execution.{SQLExecution, SparkPlanInfo, WholeStageCodegenExec}
-import org.apache.spark.sql.execution.metric._
-import org.apache.spark.sql.execution.ui.{SQLExecutionUIData, SQLPlanMetric, SparkListenerDriverAccumUpdates, SparkListenerSQLExecutionEnd, SparkListenerSQLExecutionStart, SparkPlanGraphWrapper}
-import org.apache.spark.sql.internal.StaticSQLConf._
-import org.apache.spark.status.config._
-import org.apache.spark.status.{ElementTrackingStore, KVUtils, LiveEntity}
+import org.apache.spark.sql.execution.SQLExecution
+import org.apache.spark.sql.execution.ui.{SparkListenerSQLExecutionEnd, SparkListenerSQLExecutionStart}
 
-import scala.collection.JavaConverters._
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+class SparderMetricsListener() extends SparkListener with Logging {
 
-/**
- *
- * @param conf
- * @param kvstore
- * @param live
- */
-class SparderMetricsListener(
-                              conf: org.apache.spark.SparkConf,
-                              kvstore: ElementTrackingStore,
-                              live: Boolean) extends SparkListener with Logging {
+  var stageJobMap:Map[Int, Int] = Map()
+  var jobExecutionMap:Map[Int, QueryInformation] = Map()
+  var executionInformationMap:Map[Long, ExecutionInformation] = Map()
 
-  // How often to flush intermediate state of a live execution to the store. When replaying logs,
-  // never flush (only do the very last write).
-  private val liveUpdatePeriodNs = if (live) conf.get(LIVE_ENTITY_UPDATE_PERIOD) else -1L
-
-  // Live tracked data is needed by the SQL status store to calculate metrics for in-flight
-  // executions; that means arbitrary threads may be querying these maps, so they need to be
-  private val liveExecutions = new ConcurrentHashMap[Long, LiveExecutionData]()
-  private val stageMetrics = new ConcurrentHashMap[Int, LiveStageMetrics]()
-
-  // Returns true if this listener has no live data. Exposed for tests only.
-  private[sql] def noLiveData(): Boolean = {
-    liveExecutions.isEmpty && stageMetrics.isEmpty
-  }
-
-  kvstore.addTrigger(classOf[SQLExecutionUIData], 10000) { count =>
-    cleanupExecutions(count)
-  }
-
-  kvstore.onFlush {
-    if (!live) {
-      val now = System.nanoTime()
-      liveExecutions.values.asScala.foreach { exec =>
-        // This saves the partial aggregated metrics to the store; this works currently because
-        // when the SHS sees an updated event log, all old data for the application is thrown
-        // away.
-        exec.metricsValues = aggregateMetrics(exec)
-        exec.write(kvstore, now)
-      }
-    }
-  }
-
-  // ============================================================================
-  // ============================================================================
-  // On call method
-  // ============================================================================
-
-
-  /**
-   *
-   * @param event
-   */
   override def onJobStart(event: SparkListenerJobStart): Unit = {
-    MetricsEventTool.verbose(event)
     val executionIdString = event.properties.getProperty(SQLExecution.EXECUTION_ID_KEY)
+    val sparderName = event.properties.getProperty("spark.app.name")
+    val kylinQueryId = event.properties.getProperty("kylin.query.id")
+
     if (executionIdString == null) {
       // This is not a job created by SQL
+      logInfo("Cannot happened.")
       return
     }
 
     val executionId = executionIdString.toLong
-    val jobId = event.jobId
-    val queryExecution = Option(liveExecutions.get(executionId))
-      .orElse {
-        try {
-          // Should not overwrite the kvstore with new entry, if it already has the SQLExecution
-          // data corresponding to the execId.
-          val sqlStoreData = kvstore.read(classOf[SQLExecutionUIData], executionId)
-          val executionData = new LiveExecutionData(executionId)
-          executionData.description = sqlStoreData.description
-          executionData.details = sqlStoreData.details
-          executionData.physicalPlanDescription = sqlStoreData.physicalPlanDescription
-          executionData.metrics = sqlStoreData.metrics
-          executionData.submissionTime = sqlStoreData.submissionTime
-          executionData.completionTime = sqlStoreData.completionTime
-          executionData.jobs = sqlStoreData.jobs
-          executionData.stages = sqlStoreData.stages
-          executionData.metricsValues = sqlStoreData.metricValues
-          executionData.endEvents = sqlStoreData.jobs.size + 1
-          liveExecutions.put(executionId, executionData)
-          Some(executionData)
-        } catch {
-          case _: NoSuchElementException => None
-        }
-      }.getOrElse(getOrCreateExecution(executionId))
 
-    // Record the accumulator IDs for the stages of this job, so that the code that keeps
-    // track of the metrics knows which accumulators to look at.
-    val accumIds = queryExecution.metrics.map(_.accumulatorId).sorted.toList
-    event.stageIds.foreach { id =>
-      stageMetrics.put(id, new LiveStageMetrics(id, 0, accumIds.toArray, new ConcurrentHashMap()))
+    if (executionInformationMap.apply(executionId).sparderName == null) {
+      val executionInformation = new ExecutionInformation(kylinQueryId, executionInformationMap.apply(executionId).executionStartTime, sparderName)
+      executionInformationMap += (executionId -> executionInformation)
     }
 
-    queryExecution.jobs = queryExecution.jobs + (jobId -> JobExecutionStatus.RUNNING)
-    queryExecution.stages ++= event.stageIds.toSet
-    update(queryExecution, force = true)
+    jobExecutionMap += (event.jobId -> new QueryInformation(kylinQueryId, executionId))
+
+    val stages = event.stageInfos.iterator
+    while (stages.hasNext) {
+      val stage: StageInfo = stages.next()
+      stageJobMap += (stage.stageId -> event.jobId)
+    }
   }
 
   override def onJobEnd(event: SparkListenerJobEnd): Unit = {
-    MetricsEventTool.verbose(event)
-    liveExecutions.values().asScala.foreach { exec =>
-      if (exec.jobs.contains(event.jobId)) {
-        val result = event.jobResult match {
-          case JobSucceeded => JobExecutionStatus.SUCCEEDED
-          case _ => JobExecutionStatus.FAILED
-        }
-        exec.jobs = exec.jobs + (event.jobId -> result)
-        exec.endEvents += 1
-        update(exec)
-      }
+    val isSuccess = event.jobResult match {
+      case JobSucceeded => true
+      case _ => false
     }
-  }
-
-  override def onStageSubmitted(event: SparkListenerStageSubmitted): Unit = {
-    MetricsEventTool.verbose(event)
-    if (!isSQLStage(event.stageInfo.stageId)) {
-      return
-    }
-
-    // Reset the metrics tracking object for the new attempt.
-    Option(stageMetrics.get(event.stageInfo.stageId)).foreach { metrics =>
-      metrics.taskMetrics.clear()
-      metrics.attemptId = event.stageInfo.attemptNumber
-    }
+    QuerySparkMetrics.addSparkJobMetrics(jobExecutionMap.apply(event.jobId).queryId, jobExecutionMap.apply(event.jobId).executionId, event.jobId, isSuccess)
+    jobExecutionMap -= event.jobId
   }
 
   override def onStageCompleted(event: SparkListenerStageCompleted): Unit = {
-    MetricsEventTool.verbose(event)
-  }
-
-
-  override def onExecutorMetricsUpdate(event: SparkListenerExecutorMetricsUpdate): Unit = {
-    MetricsEventTool.verbose(event)
-    event.accumUpdates.foreach { case (taskId, stageId, attemptId, accumUpdates) =>
-      updateStageMetrics(stageId, attemptId, taskId, accumUpdates, false)
+    val stageInfo = event.stageInfo
+    val isSuccess = stageInfo.getStatusString match {
+      case "succeeded" => true
+      case _ => false
     }
-  }
+    val stageMetrics = stageInfo.taskMetrics
+    QuerySparkMetrics.addSparkStageMetrics(stageJobMap.apply(stageInfo.stageId), stageInfo.stageId, stageInfo.name, isSuccess, stageMetrics.resultSize, stageMetrics.executorDeserializeCpuTime,
+    stageMetrics.executorDeserializeCpuTime, stageMetrics.executorRunTime, stageMetrics.executorCpuTime, stageMetrics.jvmGCTime, stageMetrics.resultSerializationTime,
+    stageMetrics.memoryBytesSpilled, stageMetrics.diskBytesSpilled, stageMetrics.peakExecutionMemory)
+    stageJobMap -= stageInfo.stageId
 
-  override def onTaskEnd(event: SparkListenerTaskEnd): Unit = {
-    MetricsEventTool.verbose(event)
-    if (!isSQLStage(event.stageId)) {
-      return
-    }
-    val info = event.taskInfo
-    // SPARK-20342. If processing events from a live application, use the task metrics info to
-    // work around a race in the DAGScheduler. The metrics info does not contain accumulator info
-    // when reading event logs in the SHS, so we have to rely on the accumulator in that case.
-    val accums = if (live && event.taskMetrics != null) {
-      event.taskMetrics.externalAccums.flatMap { a =>
-        // This call may fail if the accumulator is gc'ed, so account for that.
-        try {
-          Some(a.toInfo(Some(a.value), None))
-        } catch {
-          case _: IllegalAccessError => None
-        }
-      }
-    } else {
-      info.accumulables
-    }
-    updateStageMetrics(event.stageId, event.stageAttemptId, info.taskId, accums,
-      info.successful)
+    logInfo("Stage " + event.stageInfo.stageId + ", " + event.stageInfo.name + ", "
+      + event.stageInfo.details + " is completed.")
   }
-
 
   override def onOtherEvent(event: SparkListenerEvent): Unit = {
-    MetricsEventTool.verbose(event)
     event match {
       case e: SparkListenerSQLExecutionStart => onQueryExecutionStart(e)
       case e: SparkListenerSQLExecutionEnd => onQueryExecutionEnd(e)
-      case e: SparkListenerDriverAccumUpdates => onDriverAccumUpdates(e)
       case _ => // Ignore
     }
   }
 
-
   private def onQueryExecutionStart(event: SparkListenerSQLExecutionStart): Unit = {
-    MetricsEventTool.verbose(event)
-    val SparkListenerSQLExecutionStart(executionId, description, details,
-    physicalPlanDescription, sparkPlanInfo, time) = event
-
-    def toStoredNodes(nodes: Seq[SparkPlanGraphNode]): Seq[SparkPlanGraphNodeWrapper] = {
-      nodes.map {
-        case cluster: SparkPlanGraphCluster =>
-          val storedCluster = new SparkPlanGraphClusterWrapper(
-            cluster.id,
-            cluster.name,
-            cluster.desc,
-            toStoredNodes(cluster.nodes),
-            cluster.metrics)
-          new SparkPlanGraphNodeWrapper(null, storedCluster)
-
-        case node =>
-          new SparkPlanGraphNodeWrapper(node, null)
-      }
-    }
-
-    val planGraph = SparkPlanGraph(sparkPlanInfo)
-    val sqlPlanMetrics = planGraph.allNodes.flatMap { node =>
-      node.metrics.map { metric => (metric.accumulatorId, metric) }
-    }.toMap.values.toList
-
-    val graphToStore = new SparkPlanGraphWrapper(
-      executionId,
-      toStoredNodes(planGraph.nodes),
-      planGraph.edges)
-//    kvstore.write(graphToStore)
-//
-//    val exec = getOrCreateExecution(executionId)
-//    exec.description = description
-//    exec.details = details
-//    exec.physicalPlanDescription = physicalPlanDescription
-//    exec.metrics = sqlPlanMetrics
-//    exec.submissionTime = time
-//    update(exec)
+    executionInformationMap += (event.executionId -> new ExecutionInformation(-1, event.time, null))
   }
 
   private def onQueryExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
-    MetricsEventTool.verbose(event)
-    val SparkListenerSQLExecutionEnd(executionId, time) = event
-    Option(liveExecutions.get(executionId)).foreach { exec =>
-      exec.metricsValues = aggregateMetrics(exec)
-      exec.completionTime = Some(new Date(time))
-      exec.endEvents += 1
-      update(exec)
-
-      removeStaleMetricsData(exec)
+    val executionInformation = executionInformationMap.apply(event.executionId)
+    QuerySparkMetrics.addExecutionMetrics(executionInformation.queryId, event.executionId, event.time - executionInformation.executionStartTime, executionInformation.sparderName)
+    executionInformationMap -= event.executionId
+    logInfo("QueryExecution " + event.executionId + " is completed at " + event.time)
     }
-
-    try {
-      val querys = liveExecutions.keys()
-      while (querys.hasMoreElements) {
-        val execution: LiveExecutionData = liveExecutions.get(querys.nextElement())
-        logInfo("Verbose : " + execution.executionId + ", metricsValues : " + execution.metricsValues + ", jobs : " + execution.jobs + ", metrics : " + execution.metrics)
-      }
-    } catch {
-      case e: Exception => logWarning("", e)
-    }
-
-  }
-
-  private def onDriverAccumUpdates(event: SparkListenerDriverAccumUpdates): Unit = {
-    MetricsEventTool.verbose(event)
-    val SparkListenerDriverAccumUpdates(executionId, accumUpdates) = event
-    Option(liveExecutions.get(executionId)).foreach { exec =>
-      exec.driverAccumUpdates = exec.driverAccumUpdates ++ accumUpdates
-      update(exec)
-    }
-  }
-
-  // ============================================================================
-  // ============================================================================
-  // Internal method
-  // ============================================================================
-
-
-  private def updateStageMetrics(
-                                  stageId: Int,
-                                  attemptId: Int,
-                                  taskId: Long,
-                                  accumUpdates: Seq[AccumulableInfo],
-                                  succeeded: Boolean): Unit = {
-    Option(stageMetrics.get(stageId)).foreach {
-      metrics =>
-        if (metrics.attemptId != attemptId || metrics.accumulatorIds.isEmpty) {
-          return
-        }
-
-        val oldTaskMetrics = metrics.taskMetrics.get(taskId)
-        if (oldTaskMetrics != null && oldTaskMetrics.succeeded) {
-          return
-        }
-
-        val updates = accumUpdates
-          .filter {
-            acc => acc.update.isDefined && metrics.accumulatorIds.contains(acc.id)
-          }
-          .sortBy(_.id)
-
-        if (updates.isEmpty) {
-          return
-        }
-
-        val ids = new Array[Long](updates.size)
-        val values = new Array[Long](updates.size)
-        updates.zipWithIndex.foreach {
-          case (acc, idx) =>
-            ids(idx) = acc.id
-            // In a live application, accumulators have Long values, but when reading from event
-            // logs, they have String values. For now, assume all accumulators are Long and covert
-            // accordingly.
-            values(idx) = acc.update.get match {
-              case s: String => s.toLong
-              case l: Long => l
-              case o => throw new IllegalArgumentException(s"Unexpected: $o")
-            }
-        }
-
-        // TODO: storing metrics by task ID can cause metrics for the same task index to be
-        // counted multiple times, for example due to speculation or re-attempts.
-        metrics.taskMetrics.put(taskId, new LiveTaskMetrics(ids, values, succeeded))
-    }
-  }
-
-  private def removeStaleMetricsData(exec: LiveExecutionData): Unit = {
-    // Remove stale LiveStageMetrics objects for stages that are not active anymore.
-    val activeStages = liveExecutions.values().asScala.flatMap {
-      other =>
-        if (other != exec) other.stages else Nil
-    }.toSet
-    stageMetrics.keySet().asScala
-      .filter(!activeStages.contains(_))
-      .foreach(stageMetrics.remove)
-  }
-
-  private def getOrCreateExecution(executionId: Long): LiveExecutionData = {
-    liveExecutions.computeIfAbsent(executionId,
-      new Function[Long, LiveExecutionData]() {
-        override def apply(key: Long): LiveExecutionData = new LiveExecutionData(executionId)
-      })
-  }
-
-  private def update(exec: LiveExecutionData, force: Boolean = false): Unit = {
-    val now = System.nanoTime()
-    if (exec.endEvents >= exec.jobs.size + 1) {
-      exec.write(kvstore, now)
-      removeStaleMetricsData(exec)
-      liveExecutions.remove(exec.executionId)
-    } else if (force) {
-      exec.write(kvstore, now)
-    } else if (liveUpdatePeriodNs >= 0) {
-      if (now - exec.lastWriteTime > liveUpdatePeriodNs) {
-        exec.write(kvstore, now)
-      }
-    }
-  }
-
-  private def isSQLStage(stageId: Int): Boolean = {
-    liveExecutions.values().asScala.exists {
-      exec =>
-        exec.stages.contains(stageId)
-    }
-  }
-
-  private def cleanupExecutions(count: Long): Unit = {
-    val countToDelete = count - conf.get(UI_RETAINED_EXECUTIONS)
-    if (countToDelete <= 0) {
-      return
-    }
-
-    val view = kvstore.view(classOf[SQLExecutionUIData]).index("completionTime").first(0L)
-    val toDelete = KVUtils.viewToSeq(view, countToDelete.toInt)(_.completionTime.isDefined)
-    toDelete.foreach {
-      e =>
-        kvstore.delete(e.getClass(), e.executionId)
-        kvstore.delete(classOf[SparkPlanGraphWrapper], e.executionId)
-    }
-  }
-
-  def liveExecutionMetrics(executionId: Long): Option[Map[Long, String]] = {
-    Option(liveExecutions.get(executionId)).map {
-      exec =>
-        if (exec.metricsValues != null) {
-          exec.metricsValues
-        } else {
-          aggregateMetrics(exec)
-        }
-    }
-  }
-
-  private def aggregateMetrics(exec: LiveExecutionData): Map[Long, String] = {
-    val metricTypes = exec.metrics.map {
-      m => (m.accumulatorId, m.metricType)
-    }.toMap
-    val metrics = exec.stages.toSeq
-      .flatMap {
-        stageId => Option(stageMetrics.get(stageId))
-      }
-      .flatMap(_.taskMetrics.values().asScala)
-      .flatMap {
-        metrics => metrics.ids.zip(metrics.values)
-      }
-
-    val aggregatedMetrics = (metrics ++ exec.driverAccumUpdates.toSeq)
-      .filter {
-        case (id, _) => metricTypes.contains(id)
-      }
-      .groupBy(_._1)
-      .map {
-        case (id, values) =>
-          id -> SQLMetrics.stringValue(metricTypes(id), values.map(_._2))
-      }
-
-    // Check the execution again for whether the aggregated metrics data has been calculated.
-    // This can happen if the UI is requesting this data, and the onExecutionEnd handler is
-    // running at the same time. The metrics calculated for the UI can be innacurate in that
-    // case, since the onExecutionEnd handler will clean up tracked stage metrics.
-    if (exec.metricsValues != null) {
-      exec.metricsValues
-    } else {
-      aggregatedMetrics
-    }
-  }
-
 }
 
 // ============================
 
-class LiveExecutionData(val executionId: Long) extends LiveEntity {
-
-  var description: String = null
-  var details: String = null
-  var physicalPlanDescription: String = null
-  var metrics: Seq[SQLPlanMetric] = Seq[SQLPlanMetric]()
-  var submissionTime: Long = -1L
-  var completionTime: Option[Date] = None
-
-  var jobs = Map[Int, JobExecutionStatus]()
-  var stages = Set[Int]()
-  var driverAccumUpdates = Map[Long, Long]()
-
-  @volatile var metricsValues: Map[Long, String] = null
-
-  // Just in case job end and execution end arrive out of order, keep track of how many
-  // end events arrived so that the listener can stop tracking the execution.
-  var endEvents = 0
-
-  override protected def doUpdate(): Any = {
-    new SQLExecutionUIData(
-      executionId,
-      description,
-      details,
-      physicalPlanDescription,
-      metrics,
-      submissionTime,
-      completionTime,
-      jobs,
-      stages,
-      metricsValues)
-  }
-
-}
-
-class SparkPlanGraphNode(
-                          val id: Long,
-                          val name: String,
-                          val desc: String,
-                          val metrics: Seq[SQLPlanMetric]) {
-
-  def makeDotNode(metricsValue: Map[Long, String]): String = {
-    val builder = new mutable.StringBuilder(name)
-
-    val values = for {
-      metric <- metrics
-      value <- metricsValue.get(metric.accumulatorId)
-    } yield {
-      metric.name + ": " + value
-    }
-
-    if (values.nonEmpty) {
-      // If there are metrics, display each entry in a separate line.
-      // Note: whitespace between two "\n"s is to create an empty line between the name of
-      // SparkPlan and metrics. If removing it, it won't display the empty line in UI.
-      builder ++= "\n \n"
-      builder ++= values.mkString("\n")
-    }
-
-    s"""  $id [label="${StringEscapeUtils.escapeJava(builder.toString())}"];"""
-  }
-}
-
-class SparkPlanGraphCluster(
-                             id: Long,
-                             name: String,
-                             desc: String,
-                             val nodes: mutable.ArrayBuffer[SparkPlanGraphNode],
-                             metrics: Seq[SQLPlanMetric])
-  extends SparkPlanGraphNode(id, name, desc, metrics) {
-
-  override def makeDotNode(metricsValue: Map[Long, String]): String = {
-    val duration = metrics.filter(_.name.startsWith(WholeStageCodegenExec.PIPELINE_DURATION_METRIC))
-    val labelStr = if (duration.nonEmpty) {
-      require(duration.length == 1)
-      val id = duration(0).accumulatorId
-      if (metricsValue.contains(duration(0).accumulatorId)) {
-        name + "\n\n" + metricsValue.get(id).get
-      } else {
-        name
-      }
-    } else {
-      name
-    }
-    s"""
-       |  subgraph cluster${id} {
-       |    label="${StringEscapeUtils.escapeJava(labelStr)}";
-       |    ${nodes.map(_.makeDotNode(metricsValue)).mkString("    \n")}
-       |  }
-     """.stripMargin
-  }
-}
-
-class SparkPlanGraphWrapper(
-                             val executionId: Long,
-                             val nodes: Seq[SparkPlanGraphNodeWrapper],
-                             val edges: Seq[SparkPlanGraphEdge]) {
-
-  def toSparkPlanGraph(): SparkPlanGraph = {
-    SparkPlanGraph(nodes.map(_.toSparkPlanGraphNode()), edges)
-  }
-
-}
-
-object SparkPlanGraph {
-
-  /**
-   * Build a SparkPlanGraph from the root of a SparkPlan tree.
-   */
-  def apply(planInfo: SparkPlanInfo): SparkPlanGraph = {
-    val nodeIdGenerator = new AtomicLong(0)
-    val nodes = mutable.ArrayBuffer[SparkPlanGraphNode]()
-    val edges = mutable.ArrayBuffer[SparkPlanGraphEdge]()
-    val exchanges = mutable.HashMap[SparkPlanInfo, SparkPlanGraphNode]()
-    buildSparkPlanGraphNode(planInfo, nodeIdGenerator, nodes, edges, null, null, exchanges)
-    new SparkPlanGraph(nodes, edges)
-  }
-
-  private def buildSparkPlanGraphNode(
-                                       planInfo: SparkPlanInfo,
-                                       nodeIdGenerator: AtomicLong,
-                                       nodes: mutable.ArrayBuffer[SparkPlanGraphNode],
-                                       edges: mutable.ArrayBuffer[SparkPlanGraphEdge],
-                                       parent: SparkPlanGraphNode,
-                                       subgraph: SparkPlanGraphCluster,
-                                       exchanges: mutable.HashMap[SparkPlanInfo, SparkPlanGraphNode]): Unit = {
-    planInfo.nodeName match {
-      case "WholeStageCodegen" =>
-        val metrics = planInfo.metrics.map { metric =>
-          SQLPlanMetric(metric.name, metric.accumulatorId, metric.metricType)
-        }
-
-        val cluster = new SparkPlanGraphCluster(
-          nodeIdGenerator.getAndIncrement(),
-          planInfo.nodeName,
-          planInfo.simpleString,
-          mutable.ArrayBuffer[SparkPlanGraphNode](),
-          metrics)
-        nodes += cluster
-
-        buildSparkPlanGraphNode(
-          planInfo.children.head, nodeIdGenerator, nodes, edges, parent, cluster, exchanges)
-      case "InputAdapter" =>
-        buildSparkPlanGraphNode(
-          planInfo.children.head, nodeIdGenerator, nodes, edges, parent, null, exchanges)
-      case "Subquery" if subgraph != null =>
-        // Subquery should not be included in WholeStageCodegen
-        buildSparkPlanGraphNode(planInfo, nodeIdGenerator, nodes, edges, parent, null, exchanges)
-      case "Subquery" if exchanges.contains(planInfo) =>
-        // Point to the re-used subquery
-        val node = exchanges(planInfo)
-        edges += SparkPlanGraphEdge(node.id, parent.id)
-      case "ReusedExchange" if exchanges.contains(planInfo.children.head) =>
-        // Point to the re-used exchange
-        val node = exchanges(planInfo.children.head)
-        edges += SparkPlanGraphEdge(node.id, parent.id)
-      case name =>
-        val metrics = planInfo.metrics.map { metric =>
-          SQLPlanMetric(metric.name, metric.accumulatorId, metric.metricType)
-        }
-        val node = new SparkPlanGraphNode(
-          nodeIdGenerator.getAndIncrement(), planInfo.nodeName,
-          planInfo.simpleString, metrics)
-        if (subgraph == null) {
-          nodes += node
-        } else {
-          subgraph.nodes += node
-        }
-        if (name.contains("Exchange") || name == "Subquery") {
-          exchanges += planInfo -> node
-        }
-
-        if (parent != null) {
-          edges += SparkPlanGraphEdge(node.id, parent.id)
-        }
-        planInfo.children.foreach(
-          buildSparkPlanGraphNode(_, nodeIdGenerator, nodes, edges, node, subgraph, exchanges))
-    }
-  }
-}
-
-case class SparkPlanGraph(
-                           nodes: Seq[SparkPlanGraphNode], edges: Seq[SparkPlanGraphEdge]) {
-
-  def makeDotFile(metrics: Map[Long, String]): String = {
-    val dotFile = new StringBuilder
-    dotFile.append("digraph G {\n")
-    nodes.foreach(node => dotFile.append(node.makeDotNode(metrics) + "\n"))
-    edges.foreach(edge => dotFile.append(edge.makeDotEdge + "\n"))
-    dotFile.append("}")
-    dotFile.toString()
-  }
-
-  /**
-   * All the SparkPlanGraphNodes, including those inside of WholeStageCodegen.
-   */
-  val allNodes: Seq[SparkPlanGraphNode] = {
-    nodes.flatMap {
-      case cluster: SparkPlanGraphCluster => cluster.nodes :+ cluster
-      case node => Seq(node)
-    }
-  }
-}
-
-case class SparkPlanGraphEdge(fromId: Long, toId: Long) {
-
-  def makeDotEdge: String = s"""  $fromId->$toId;\n"""
-}
-
-class SparkPlanGraphClusterWrapper(
-                                    val id: Long,
-                                    val name: String,
-                                    val desc: String,
-                                    val nodes: Seq[SparkPlanGraphNodeWrapper],
-                                    val metrics: Seq[SQLPlanMetric]) {
-
-  def toSparkPlanGraphCluster(): SparkPlanGraphCluster = {
-    new SparkPlanGraphCluster(id, name, desc,
-      new ArrayBuffer() ++ nodes.map(_.toSparkPlanGraphNode()),
-      metrics)
-  }
-
-}
-
-/** Only one of the values should be set. */
-class SparkPlanGraphNodeWrapper(
-                                 val node: SparkPlanGraphNode,
-                                 val cluster: SparkPlanGraphClusterWrapper) {
-
-  def toSparkPlanGraphNode(): SparkPlanGraphNode = {
-    assert(node == null ^ cluster == null, "One and only of of nore or cluster must be set.")
-    if (node != null) node else cluster.toSparkPlanGraphCluster()
-  }
-
-}
-
-private class LiveStageMetrics(
-                                val stageId: Int,
-                                var attemptId: Int,
-                                val accumulatorIds: Array[Long],
-                                val taskMetrics: ConcurrentHashMap[Long, LiveTaskMetrics])
-
-private class LiveTaskMetrics(
-                               val ids: Array[Long],
-                               val values: Array[Long],
-                               val succeeded: Boolean)
+private class ExecutionInformation (
+                                   var queryId: String,
+                                   var executionStartTime: Long,
+                                   var sparderName: String
+                                   )
+private class QueryInformation (
+                              val queryId: String,
+                              val executionId: Long
+                              )
