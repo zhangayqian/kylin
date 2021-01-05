@@ -119,7 +119,7 @@ public class DashboardService extends BasicService {
         Map<String, String> filterMap = getBaseFilterMap(CategoryEnum.QUERY, projectName, startTime, endTime);
         filterMap.putAll(getCubeFilterMap(CategoryEnum.QUERY, cubeName));
         return createPrepareSqlRequest(null, metrics,
-                getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQuery()), filterMap);
+                getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQueryExecution()), filterMap);
     };
 
     public PrepareSqlRequest getJobMetricsSQLRequest(String startTime, String endTime, String projectName,
@@ -143,7 +143,7 @@ public class DashboardService extends BasicService {
             if (categoryEnum == CategoryEnum.QUERY) {
                 dimensionSQL = new String[] { QueryDimensionEnum.valueOf(dimension).toSQL() };
                 metricSQL = new String[] { QueryMetricEnum.valueOf(metric).toSQL() };
-                table = getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQuery());
+                table = getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQueryExecution());
             } else if (categoryEnum == CategoryEnum.JOB) {
                 dimensionSQL = new String[] { JobDimensionEnum.valueOf(dimension).toSQL() };
                 metricSQL = new String[] { JobMetricEnum.valueOf(metric).toSQL() };
