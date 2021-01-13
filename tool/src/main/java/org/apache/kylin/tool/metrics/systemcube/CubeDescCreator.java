@@ -120,7 +120,7 @@ public class CubeDescCreator {
         rowKeyDesc.setRowkeyColumns(rowKeyColDescs);
 
         //Set for aggregation group
-        String[][] hierarchy_dims = new String[4][];
+        String[][] hierarchy_dims = new String[5][];
         hierarchy_dims[0] = getTimeHierarchy();
         hierarchy_dims[1] = new String[3];
         hierarchy_dims[1][0] = QuerySparkExecutionEnum.REALIZATION_TYPE.toString();
@@ -132,6 +132,9 @@ public class CubeDescCreator {
         hierarchy_dims[3] = new String[2];
         hierarchy_dims[3][0] = QuerySparkExecutionEnum.START_TIME.toString();
         hierarchy_dims[3][1] = QuerySparkExecutionEnum.END_TIME.toString();
+        hierarchy_dims[4] = new String[2];
+        hierarchy_dims[4][0] = QuerySparkExecutionEnum.SPARDER_NAME.toString();
+        hierarchy_dims[4][1] = RecordEvent.RecordReserveKeyEnum.HOST.toString();
         for (int i = 0; i < hierarchy_dims.length; i++) {
             hierarchy_dims[i] = refineColumnWithTable(tableName, hierarchy_dims[i]);
         }

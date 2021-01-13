@@ -151,6 +151,7 @@ object SparderContext extends Logging {
                     .enableHiveSupport()
                     .getOrCreateKylinSession()
               }
+              logInfo(kylinConf.getQueryMetricsEnabled.toString)
               if (kylinConf.getQueryMetricsEnabled) {
                 val appStatusListener = new SparderMetricsListener()
                 sparkSession.sparkContext.addSparkListener(appStatusListener)
