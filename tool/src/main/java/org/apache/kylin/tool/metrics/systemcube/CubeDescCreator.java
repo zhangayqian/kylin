@@ -107,8 +107,6 @@ public class CubeDescCreator {
         idx++;
         rowKeyColDescs[idx] = getRowKeyColDesc(tableName, QuerySparkExecutionEnum.QUERY_ID.toString(), idx + 1);
         idx++;
-        rowKeyColDescs[idx] = getRowKeyColDesc(tableName, QuerySparkExecutionEnum.EXECUTION_ID.toString(), idx + 1);
-        idx++;
         rowKeyColDescs[idx] = getRowKeyColDesc(tableName, QuerySparkExecutionEnum.START_TIME.toString(), idx + 1);
         idx++;
         rowKeyColDescs[idx] = getRowKeyColDesc(tableName, QuerySparkExecutionEnum.END_TIME.toString(), idx + 1);
@@ -120,21 +118,18 @@ public class CubeDescCreator {
         rowKeyDesc.setRowkeyColumns(rowKeyColDescs);
 
         //Set for aggregation group
-        String[][] hierarchy_dims = new String[5][];
+        String[][] hierarchy_dims = new String[4][];
         hierarchy_dims[0] = getTimeHierarchy();
         hierarchy_dims[1] = new String[3];
         hierarchy_dims[1][0] = QuerySparkExecutionEnum.REALIZATION_TYPE.toString();
         hierarchy_dims[1][1] = QuerySparkExecutionEnum.REALIZATION.toString();
         hierarchy_dims[1][2] = QuerySparkExecutionEnum.CUBOID_IDS.toString();
         hierarchy_dims[2] = new String[2];
-        hierarchy_dims[2][0] = QuerySparkExecutionEnum.QUERY_ID.toString();
-        hierarchy_dims[2][1] = QuerySparkExecutionEnum.EXECUTION_ID.toString();
+        hierarchy_dims[2][0] = QuerySparkExecutionEnum.START_TIME.toString();
+        hierarchy_dims[2][1] = QuerySparkExecutionEnum.END_TIME.toString();
         hierarchy_dims[3] = new String[2];
-        hierarchy_dims[3][0] = QuerySparkExecutionEnum.START_TIME.toString();
-        hierarchy_dims[3][1] = QuerySparkExecutionEnum.END_TIME.toString();
-        hierarchy_dims[4] = new String[2];
-        hierarchy_dims[4][0] = QuerySparkExecutionEnum.SPARDER_NAME.toString();
-        hierarchy_dims[4][1] = RecordEvent.RecordReserveKeyEnum.HOST.toString();
+        hierarchy_dims[3][0] = QuerySparkExecutionEnum.SPARDER_NAME.toString();
+        hierarchy_dims[3][1] = RecordEvent.RecordReserveKeyEnum.HOST.toString();
         for (int i = 0; i < hierarchy_dims.length; i++) {
             hierarchy_dims[i] = refineColumnWithTable(tableName, hierarchy_dims[i]);
         }

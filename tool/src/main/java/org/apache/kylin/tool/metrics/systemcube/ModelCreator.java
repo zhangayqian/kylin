@@ -110,7 +110,6 @@ public class ModelCreator {
         result.add(QuerySparkExecutionEnum.EXCEPTION.toString());
         result.add(QuerySparkExecutionEnum.SPARDER_NAME.toString());
         result.add(QuerySparkExecutionEnum.QUERY_ID.toString());
-        result.add(QuerySparkExecutionEnum.EXECUTION_ID.toString());
         result.add(QuerySparkExecutionEnum.START_TIME.toString());
         result.add(QuerySparkExecutionEnum.END_TIME.toString());
 
