@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class QuerySparkMetrics {
@@ -46,7 +47,7 @@ public class QuerySparkMetrics {
     private QuerySparkMetrics() {
         queryExecutionMetricsMap = CacheBuilder.newBuilder()
                 .maximumSize(KylinConfig.getInstanceFromEnv().getKylinMetricsCacheMaxEntries())
-                .expireAfterAccess(KylinConfig.getInstanceFromEnv().getKylinMetricsCacheExpireSeconds(),
+                .expireAfterWrite(KylinConfig.getInstanceFromEnv().getKylinMetricsCacheExpireSeconds(),
                         TimeUnit.SECONDS)
                 .removalListener(new RemovalListener<String, QueryExecutionMetrics>() {
                     @Override
@@ -61,6 +62,15 @@ public class QuerySparkMetrics {
                         }
                     }
                 }).build();
+
+        Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(new Runnable() {
+                                                                                @Override
+                                                                                public void run() {
+                                                                                    queryExecutionMetricsMap.cleanUp();
+                                                                                }
+                                                                            },
+                KylinConfig.getInstanceFromEnv().getKylinMetricsCacheExpireSeconds(),
+                KylinConfig.getInstanceFromEnv().getKylinMetricsCacheExpireSeconds(), TimeUnit.SECONDS);
 
     }
 
