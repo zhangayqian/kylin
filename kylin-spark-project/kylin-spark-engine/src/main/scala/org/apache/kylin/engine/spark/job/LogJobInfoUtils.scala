@@ -72,6 +72,15 @@ object LogJobInfoUtils {
      """.stripMargin
   }
 
+  def resourceDetectBeforeOptimizeJobInfo: String = {
+    s"""
+       |==========================[RESOURCE DETECT BEFORE OPTIMIZE]===============================
+       |add cuboids : ${infos.getAddCuboids}
+       |delete cuboids : ${infos.getDeleteCuboids}
+       |==========================[RESOURCE DETECT BEFORE OPTIMIZE]===============================
+     """.stripMargin
+  }
+
   def dfMergeJobInfo: String = {
     s"""
        |==========================[MERGE CUBE]===============================

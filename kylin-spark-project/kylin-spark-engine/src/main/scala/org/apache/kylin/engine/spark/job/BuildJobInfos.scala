@@ -38,6 +38,11 @@ class BuildJobInfos {
 
   private val mergingSegments: java.util.List[SegmentInfo] = new util.LinkedList[SegmentInfo]
 
+  // OPTIMIZE
+  private val addCuboids: java.util.List[Long] = new util.LinkedList[Long]
+
+  private val deleteCuboids: java.util.List[Long] = new util.LinkedList[Long]
+
   // COMMON
   private val abnormalLayouts: util.Map[Long, util.List[String]] = new util.HashMap[Long, util.List[String]]
 
@@ -80,6 +85,30 @@ class BuildJobInfos {
 
   def recordMergingSegments(segments: util.List[SegmentInfo]): Unit = {
     mergingSegments.addAll(segments)
+  }
+
+  def clearAddCuboids(): Unit = {
+    addCuboids.clear()
+  }
+
+  def getAddCuboids: util.List[Long] = {
+    addCuboids
+  }
+
+  def recordDeleteCuboids(cuboids: util.List[Long]): Unit = {
+    deleteCuboids.addAll(cuboids)
+  }
+
+  def clearDeleteCuboids(): Unit = {
+    deleteCuboids.clear()
+  }
+
+  def getDeleteCuboids: util.List[Long] = {
+    deleteCuboids
+  }
+
+  def recordAddCuboids(cuboids: util.List[Long]): Unit = {
+    addCuboids.addAll(cuboids)
   }
 
   def clearMergingSegments(): Unit = {
