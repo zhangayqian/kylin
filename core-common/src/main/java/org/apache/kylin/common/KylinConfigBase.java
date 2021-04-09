@@ -2709,7 +2709,11 @@ public abstract class KylinConfigBase implements Serializable {
         return Integer.valueOf(getOptional("kylin.storage.distcp-max-map-num", "50"));
     }
 
-    public String getKylinDictCacheStrength(){
+    public String getKylinDictCacheStrength() {
         return getOptional("kylin.dict.cache.strength", "soft");
-    };
+    }
+
+    public boolean encodeBaseCuboidColumnByColumn() {
+        return Boolean.valueOf(getOptional("kylin.job.encode.base.cuboid.column-by-column", "false"));
+    }
 }
