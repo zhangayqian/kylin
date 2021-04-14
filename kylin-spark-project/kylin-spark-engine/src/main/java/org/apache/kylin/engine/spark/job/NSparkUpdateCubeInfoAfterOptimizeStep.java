@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class NSparkUpdateCubeInfoAfterOptimizeStep extends AbstractExecutable {
+public class NSparkUpdateCubeInfoAfterOptimizeStep extends NSparkExecutable {
     private static final Logger logger = LoggerFactory.getLogger(UpdateCubeInfoAfterCheckpointStep.class);
 
     public NSparkUpdateCubeInfoAfterOptimizeStep() {
@@ -63,5 +63,10 @@ public class NSparkUpdateCubeInfoAfterOptimizeStep extends AbstractExecutable {
             logger.error("fail to update cube after build", e);
             return ExecuteResult.createError(e);
         }
+    }
+
+    @Override
+    public boolean isLocalLog() {
+        return false;
     }
 }

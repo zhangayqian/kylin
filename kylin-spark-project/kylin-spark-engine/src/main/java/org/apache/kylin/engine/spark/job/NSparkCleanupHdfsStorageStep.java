@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class NSparkCleanupHdfsStorageStep extends AbstractExecutable {
+public class NSparkCleanupHdfsStorageStep extends NSparkExecutable {
     private static final Logger logger = LoggerFactory.getLogger(NSparkCleanupHdfsStorageStep.class);
     private FileSystem fs = HadoopUtil.getWorkingFileSystem();
 
@@ -76,5 +76,10 @@ public class NSparkCleanupHdfsStorageStep extends AbstractExecutable {
             logger.error("Failed to clean old segment storage", e);
             return ExecuteResult.createError(e);
         }
+    }
+
+    @Override
+    public boolean isLocalLog() {
+        return false;
     }
 }

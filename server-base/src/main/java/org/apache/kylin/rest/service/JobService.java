@@ -49,8 +49,10 @@ import org.apache.kylin.engine.mr.LookupSnapshotBuildJob;
 import org.apache.kylin.engine.mr.common.CubeJobLockUtil;
 import org.apache.kylin.engine.mr.common.JobInfoConverter;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
+import org.apache.kylin.engine.spark.application.SparkApplication;
 import org.apache.kylin.engine.spark.job.NSparkBatchOptimizeJobCheckpointBuilder;
 import org.apache.kylin.engine.spark.job.NSparkCubingJob;
+import org.apache.kylin.engine.spark.job.NSparkExecutable;
 import org.apache.kylin.engine.spark.metadata.cube.source.SourceFactory;
 import org.apache.kylin.job.JobInstance;
 import org.apache.kylin.job.JobSearchResult;
@@ -501,6 +503,10 @@ public class JobService extends BasicService implements InitializingBean {
 
     public String getJobStepOutput(String jobId, String stepId) {
         ExecutableManager executableManager = getExecutableManager();
+        AbstractExecutable job = executableManager.getJob(jobId);
+        if (job instanceof NSparkExecutable && ((NSparkExecutable) job).isLocalLog()) {
+            return executableManager.getOutput(stepId).getVerboseMsg();
+        }
         return executableManager.getOutputFromHDFSByJobId(jobId, stepId).getVerboseMsg();
     }
 

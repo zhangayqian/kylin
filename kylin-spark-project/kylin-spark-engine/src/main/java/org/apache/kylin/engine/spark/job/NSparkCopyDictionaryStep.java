@@ -67,5 +67,10 @@ public class NSparkCopyDictionaryStep extends NSparkExecutable {
 
         return new ExecuteResult();
     }
+
+    @Override
+    public boolean isLocalLog() {
+        return false;
+    }
 }
 

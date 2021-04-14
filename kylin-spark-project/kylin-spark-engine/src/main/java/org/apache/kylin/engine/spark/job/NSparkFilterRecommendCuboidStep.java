@@ -30,6 +30,7 @@ import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
 import org.apache.kylin.engine.spark.metadata.cube.PathManager;
 import org.apache.kylin.job.constant.ExecutableConstants;
+import org.apache.kylin.job.execution.AbstractExecutable;
 import org.apache.kylin.job.execution.ExecutableContext;
 import org.apache.kylin.job.execution.ExecuteResult;
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
@@ -87,5 +88,10 @@ public class NSparkFilterRecommendCuboidStep extends NSparkExecutable {
     public String getCuboidRootPath(CubeSegment segment) {
         return PathManager.getSegmentParquetStoragePath(segment.getCubeInstance(), segment.getName(),
                 segment.getStorageLocationIdentifier());
+    }
+
+    @Override
+    public boolean isLocalLog() {
+        return false;
     }
 }
