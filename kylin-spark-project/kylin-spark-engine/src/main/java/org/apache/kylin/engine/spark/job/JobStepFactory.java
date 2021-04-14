@@ -47,14 +47,8 @@ public class JobStepFactory {
         case CLEAN_UP_AFTER_MERGE:
             step = new NSparkUpdateMetaAndCleanupAfterMergeStep();
             break;
-        case FILTER_RECOMMEND_CUBOID:
-            step = new NSparkFilterRecommendCuboidStep();
-            break;
-        case COPY_DICTIONARY_SNAPSHOT:
-            step = new NSparkCopyDictionaryStep();
-            break;
         default:
-            throw new IllegalArgumentException();
+            step = new NOptimizeRelatedStep(type);
         }
 
         step.setParams(parent.getParams());

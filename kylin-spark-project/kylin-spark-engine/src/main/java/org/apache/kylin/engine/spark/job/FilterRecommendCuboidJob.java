@@ -23,25 +23,26 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.HadoopUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
+import org.apache.kylin.engine.spark.application.SparkApplication;
 import org.apache.kylin.engine.spark.metadata.cube.PathManager;
-import org.apache.kylin.job.constant.ExecutableConstants;
-import org.apache.kylin.job.execution.AbstractExecutable;
-import org.apache.kylin.job.execution.ExecutableContext;
-import org.apache.kylin.job.execution.ExecuteResult;
+import org.apache.kylin.engine.spark.utils.MetaDumpUtil;
+import org.apache.kylin.metadata.MetadataConstants;
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Set;
 
-public class NSparkFilterRecommendCuboidStep extends NSparkExecutable {
-    protected static final Logger logger = LoggerFactory.getLogger(NSparkFilterRecommendCuboidStep.class);
+public class FilterRecommendCuboidJob extends SparkApplication {
+    protected static final Logger logger = LoggerFactory.getLogger(FilterRecommendCuboidJob.class);
 
     private long baseCuboid;
     private Set<Long> recommendCuboids;
@@ -49,13 +50,18 @@ public class NSparkFilterRecommendCuboidStep extends NSparkExecutable {
     private FileSystem fs = HadoopUtil.getWorkingFileSystem();
     private Configuration conf = HadoopUtil.getCurrentConfiguration();
 
-    public NSparkFilterRecommendCuboidStep() {
-        this.setName(ExecutableConstants.STEP_NAME_FILTER_RECOMMEND_CUBOID_DATA_FOR_OPTIMIZATION);
+    public FilterRecommendCuboidJob() {
+
+    }
+
+    public String getCuboidRootPath(CubeSegment segment) {
+        return PathManager.getSegmentParquetStoragePath(segment.getCubeInstance(), segment.getName(),
+                segment.getStorageLocationIdentifier());
     }
 
     @Override
-    protected ExecuteResult doWork(ExecutableContext context) {
-        final CubeManager mgr = CubeManager.getInstance(context.getConfig());
+    protected void doExecute() throws Exception {
+        final CubeManager mgr = CubeManager.getInstance(config);
         final CubeInstance cube = mgr.getCube(CubingExecutableUtil.getCubeName(this.getParams())).latestCopyForWrite();
         final CubeSegment optimizeSegment = cube.getSegmentById(CubingExecutableUtil.getSegmentId(this.getParams()));
 
@@ -80,18 +86,12 @@ public class NSparkFilterRecommendCuboidStep extends NSparkExecutable {
             }
         } catch (IOException e) {
             logger.error("Failed to filter cuboid", e);
-            return ExecuteResult.createError(e);
+            throw e;
         }
-        return new ExecuteResult();
     }
 
-    public String getCuboidRootPath(CubeSegment segment) {
-        return PathManager.getSegmentParquetStoragePath(segment.getCubeInstance(), segment.getName(),
-                segment.getStorageLocationIdentifier());
-    }
-
-    @Override
-    public boolean isLocalLog() {
-        return false;
+    public static void main(String[] args) {
+        FilterRecommendCuboidJob filterRecommendCuboidJob = new FilterRecommendCuboidJob();
+        filterRecommendCuboidJob.execute(args);
     }
 }

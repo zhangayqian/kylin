@@ -21,12 +21,14 @@ package org.apache.kylin.engine.spark.job;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.HadoopUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
 import org.apache.kylin.job.exception.ExecuteException;
 import org.apache.kylin.job.execution.AbstractExecutable;
+import org.apache.kylin.job.execution.DefaultChainedExecutable;
 import org.apache.kylin.job.execution.ExecutableContext;
 import org.apache.kylin.job.execution.ExecuteResult;
 import org.slf4j.Logger;
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class NSparkCleanupHdfsStorageStep extends NSparkExecutable {
@@ -79,7 +82,9 @@ public class NSparkCleanupHdfsStorageStep extends NSparkExecutable {
     }
 
     @Override
-    public boolean isLocalLog() {
-        return false;
+    protected Set<String> getMetadataDumpList(KylinConfig config) {
+        AbstractExecutable parent = getParentExecutable();
+        return ((DefaultChainedExecutable) parent).getMetadataDumpList(config);
     }
+
 }

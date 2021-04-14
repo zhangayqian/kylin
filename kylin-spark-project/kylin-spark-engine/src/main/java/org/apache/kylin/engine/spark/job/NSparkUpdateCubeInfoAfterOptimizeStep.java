@@ -64,9 +64,4 @@ public class NSparkUpdateCubeInfoAfterOptimizeStep extends NSparkExecutable {
             return ExecuteResult.createError(e);
         }
     }
-
-    @Override
-    public boolean isLocalLog() {
-        return false;
-    }
 }

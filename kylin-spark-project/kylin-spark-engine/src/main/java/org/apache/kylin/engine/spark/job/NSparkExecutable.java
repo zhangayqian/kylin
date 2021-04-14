@@ -438,8 +438,4 @@ public class NSparkExecutable extends AbstractExecutable {
     public boolean needMergeMetadata() {
         return false;
     }
-
-    public boolean isLocalLog() {
-        return true;
-    }
 }

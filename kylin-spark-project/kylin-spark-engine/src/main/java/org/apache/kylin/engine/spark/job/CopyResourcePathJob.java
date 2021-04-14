@@ -19,31 +19,24 @@
 package org.apache.kylin.engine.spark.job;
 
 import java.io.IOException;
-
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.CubeUpdate;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
-import org.apache.kylin.job.constant.ExecutableConstants;
-import org.apache.kylin.job.execution.ExecutableContext;
-import org.apache.kylin.job.execution.ExecuteResult;
+import org.apache.kylin.engine.spark.application.SparkApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 
-public class NSparkCopyDictionaryStep extends NSparkExecutable {
+public class CopyResourcePathJob extends SparkApplication {
 
-    private static final Logger logger = LoggerFactory.getLogger(NSparkCopyDictionaryStep.class);
-
-    public NSparkCopyDictionaryStep() {
-       this.setName(ExecutableConstants.STEP_NAME_COPY_DICTIONARY);
-    }
+    private static final Logger logger = LoggerFactory.getLogger(CopyResourcePathJob.class);
 
     @Override
-    protected ExecuteResult doWork(ExecutableContext context)  {
-        final CubeManager mgr = CubeManager.getInstance(context.getConfig());
+    protected void doExecute() throws Exception {
+        final CubeManager mgr = CubeManager.getInstance(config);
         final CubeInstance cube = mgr.getCube(CubingExecutableUtil.getCubeName(this.getParams())).latestCopyForWrite();
         final CubeSegment optimizeSegment = cube.getSegmentById(CubingExecutableUtil.getSegmentId(this.getParams()));
 
@@ -62,15 +55,13 @@ public class NSparkCopyDictionaryStep extends NSparkExecutable {
             mgr.updateCube(cubeBuilder);
         } catch (IOException e) {
             logger.error("fail to merge dictionary or lookup snapshots", e);
-            return ExecuteResult.createError(e);
+            throw e;
         }
-
-        return new ExecuteResult();
     }
 
-    @Override
-    public boolean isLocalLog() {
-        return false;
+    public static void main(String[] args) {
+        CopyResourcePathJob copyResourcePathJob = new CopyResourcePathJob();
+        copyResourcePathJob.execute(args);
     }
 }
 
