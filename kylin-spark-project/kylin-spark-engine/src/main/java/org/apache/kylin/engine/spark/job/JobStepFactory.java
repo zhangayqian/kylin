@@ -20,6 +20,7 @@ package org.apache.kylin.engine.spark.job;
 
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.cube.CubeInstance;
+import org.apache.kylin.job.constant.ExecutableConstants;
 import org.apache.kylin.job.execution.DefaultChainedExecutable;
 
 public class JobStepFactory {
@@ -47,10 +48,14 @@ public class JobStepFactory {
         case CLEAN_UP_AFTER_MERGE:
             step = new NSparkUpdateMetaAndCleanupAfterMergeStep();
             break;
+        case FILTER_RECOMMEND_CUBOID:
+            step = new NSparkLocalStep();
+            step.setSparkSubmitClassName(FilterRecommendCuboidJob.class.getName());
+            step.setName(ExecutableConstants.STEP_NAME_FILTER_RECOMMEND_CUBOID_DATA_FOR_OPTIMIZATION);
+            break;
         default:
-            step = new NOptimizeRelatedStep(type);
+            throw new IllegalArgumentException();
         }
-
         step.setParams(parent.getParams());
         step.setProject(parent.getProject());
         step.setTargetSubject(parent.getTargetSubject());

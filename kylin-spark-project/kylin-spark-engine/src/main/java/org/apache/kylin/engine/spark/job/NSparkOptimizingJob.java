@@ -86,13 +86,10 @@ public class NSparkOptimizingJob extends CubingJob {
         // Phase 1: Prepare base cuboid data from old segment
         JobStepFactory.addStep(job, JobStepType.FILTER_RECOMMEND_CUBOID, cube);
 
-        // Phase 2: Prepare dictionary and snapshot info for new segment
-        JobStepFactory.addStep(job, JobStepType.COPY_DICTIONARY_SNAPSHOT, cube);
-
-        // Phase 3: Resource detect
+        // Phase 2: Resource detect
         JobStepFactory.addStep(job, JobStepType.RESOURCE_DETECT, cube);
 
-        // Phase 4: Calculate cuboid statistics for optimized segment, Build Cube for Missing Cuboid Data, Update metadata
+        // Phase 3: Calculate cuboid statistics for optimized segment, Build Cube for Missing Cuboid Data, Update metadata
         JobStepFactory.addStep(job, JobStepType.OPTIMIZING, cube);
 
         return job;

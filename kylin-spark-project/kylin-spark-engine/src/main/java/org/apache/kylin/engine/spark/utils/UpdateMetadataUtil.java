@@ -104,9 +104,13 @@ public class UpdateMetadataUtil {
                 toUpdateSeg.putSnapshotResPath(entry.getKey(), entry.getValue());
             }
         } else if (String.valueOf(CubeBuildTypeEnum.OPTIMIZE).equals(jobType)) {
+            CubeSegment origSeg = currentInstanceCopy.getOriginalSegmentToOptimize(toUpdateSeg);
+            toUpdateSeg.getDictionaries().putAll(origSeg.getDictionaries());
+            toUpdateSeg.getSnapshots().putAll(origSeg.getSnapshots());
+            toUpdateSeg.getRowkeyStats().addAll(origSeg.getRowkeyStats());
+
             CubeStatsReader optSegStatsReader = new CubeStatsReader(toUpdateSeg, config);
-            CubeStatsReader origSegStatsReader = new CubeStatsReader(
-                    currentInstanceCopy.getOriginalSegmentToOptimize(toUpdateSeg), config);
+            CubeStatsReader origSegStatsReader = new CubeStatsReader(origSeg, config);
             Map<Long, HLLCounter> cuboidHLLMap = Maps.newHashMap();
             if (origSegStatsReader.getCuboidRowHLLCounters() == null) {
                 throw new IllegalArgumentException(

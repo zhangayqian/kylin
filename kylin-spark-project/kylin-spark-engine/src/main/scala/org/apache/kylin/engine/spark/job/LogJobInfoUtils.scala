@@ -104,14 +104,6 @@ object LogJobInfoUtils {
      """.stripMargin
   }
 
-  def copyResourcePathInfo: String = {
-    s"""
-       |==========================[COPY RESOURCE PATH]===============================
-       |reused resources: global dictionary and lookup table snapshot
-       |==========================[COPY RESOURCE PATH]===============================
-     """.stripMargin
-  }
-
   def dfOptimizeJobInfo: String = {
     s"""
        |==========================[BUILD CUBE]===============================
