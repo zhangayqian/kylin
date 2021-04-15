@@ -117,8 +117,8 @@ class BuildJobInfos {
     addCuboids
   }
 
-  def recordAddCuboids(cuboids: util.List[Long]): Unit = {
-    addCuboids.addAll(cuboids)
+  def recordAddCuboids(cuboidId: Long): Unit = {
+    addCuboids.add(cuboidId)
   }
 
   def clearMergingSegments(): Unit = {

@@ -258,7 +258,7 @@ public class OptimizeBuildJob extends SparkApplication {
             for (LayoutEntity index : toBuildCuboids) {
                 Preconditions.checkNotNull(parentDS, "Parent dataset is null when building.");
                 if (!cubeInstance.getCuboidsByMode(CuboidModeEnum.RECOMMEND_EXISTING).contains(index.getId())) {
-                    infos.recordAddCuboids(Collections.singletonList(index));
+                    infos.recordAddCuboids(index.getId());
                     buildLayoutWithUpdate.submit(new BuildLayoutWithUpdate.JobEntity() {
                         @Override
                         public String getName() {
