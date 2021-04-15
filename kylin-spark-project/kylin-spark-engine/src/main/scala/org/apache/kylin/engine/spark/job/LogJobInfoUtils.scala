@@ -75,8 +75,8 @@ object LogJobInfoUtils {
   def resourceDetectBeforeOptimizeJobInfo: String = {
     s"""
        |==========================[RESOURCE DETECT BEFORE OPTIMIZE]===============================
-       |add cuboids : ${infos.getAddCuboids}
-       |delete cuboids : ${infos.getDeleteCuboids}
+       |optimizing segment : ${infos.getOptimizingSegment()}
+       |spark plans : ${infos.getSparkPlans}
        |==========================[RESOURCE DETECT BEFORE OPTIMIZE]===============================
      """.stripMargin
   }
@@ -93,6 +93,37 @@ object LogJobInfoUtils {
        |job retry infos :
        |  ${infos.getJobRetryInfos.asScala.map(_.toString).mkString("\n")}
        |==========================[MERGE CUBE]===============================
+     """.stripMargin
+  }
+
+  def filterRecommendCuboidJobInfo: String = {
+    s"""
+       |==========================[FILTER RECOMMEND CUBOID]===============================
+       |copy cuboids : ${infos.getReusedCuboid}
+       |==========================[[FILTER RECOMMEND CUBOID]===============================
+     """.stripMargin
+  }
+
+  def copyResourcePathInfo: String = {
+    s"""
+       |==========================[COPY RESOURCE PATH]===============================
+       |reused resources: global dictionary and lookup table snapshot
+       |==========================[COPY RESOURCE PATH]===============================
+     """.stripMargin
+  }
+
+  def dfOptimizeJobInfo: String = {
+    s"""
+       |==========================[BUILD CUBE]===============================
+       |auto spark config :${infos.getAutoSparkConfs}
+       |wait time: ${infos.waitTime}
+       |build time: ${infos.buildTime}
+       |add cuboids: ${infos.getAddCuboids}
+       |abnormal layouts : ${infos.getAbnormalLayouts}
+       |retry times : ${infos.getRetryTimes}
+       |job retry infos :
+       |  ${infos.getJobRetryInfos.asScala.map(_.toString).mkString("\n")}
+       |==========================[BUILD CUBE]===============================
      """.stripMargin
   }
 }

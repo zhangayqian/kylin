@@ -63,5 +63,10 @@ public class CopyResourcePathJob extends SparkApplication {
         CopyResourcePathJob copyResourcePathJob = new CopyResourcePathJob();
         copyResourcePathJob.execute(args);
     }
+
+    @Override
+    protected String generateInfo() {
+        return LogJobInfoUtils.copyResourcePathInfo();
+    }
 }
 

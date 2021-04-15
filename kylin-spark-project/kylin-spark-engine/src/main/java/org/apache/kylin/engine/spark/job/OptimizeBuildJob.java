@@ -63,14 +63,7 @@ import scala.Tuple2;
 import scala.collection.JavaConversions;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.ArrayList;
-import java.util.UUID;
+import java.util.*;
 
 import java.util.stream.Collectors;
 
@@ -147,6 +140,8 @@ public class OptimizeBuildJob extends SparkApplication {
         long start = System.currentTimeMillis();
         optSegInfo = ManagerHub.getSegmentInfo(config, cubeId, optSeg.getUuid(), CuboidModeEnum.RECOMMEND);
         buildLayoutWithUpdate = new BuildLayoutWithUpdate(config);
+
+        infos.clearAddCuboids();
 
         SpanningTree spanningTree;
         ParentSourceChooser sourceChooser;
@@ -254,6 +249,7 @@ public class OptimizeBuildJob extends SparkApplication {
             for (LayoutEntity index : toBuildCuboids) {
                 Preconditions.checkNotNull(parentDS, "Parent dataset is null when building.");
                 if (!cubeInstance.getCuboidsByMode(CuboidModeEnum.RECOMMEND_EXISTING).contains(index.getId())) {
+                    infos.recordAddCuboids(Collections.singletonList(index));
                     buildLayoutWithUpdate.submit(new BuildLayoutWithUpdate.JobEntity() {
                         @Override
                         public String getName() {
@@ -433,6 +429,6 @@ public class OptimizeBuildJob extends SparkApplication {
 
     @Override
     protected String generateInfo() {
-        return LogJobInfoUtils.dfBuildJobInfo();
+        return LogJobInfoUtils.dfOptimizeJobInfo();
     }
 }

@@ -27,6 +27,7 @@ import org.apache.kylin.common.util.HadoopUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
+import org.apache.kylin.cube.cuboid.CuboidModeEnum;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
 import org.apache.kylin.engine.spark.application.SparkApplication;
 import org.apache.kylin.engine.spark.metadata.cube.PathManager;
@@ -35,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 
 public class FilterRecommendCuboidJob extends SparkApplication {
@@ -57,6 +59,7 @@ public class FilterRecommendCuboidJob extends SparkApplication {
 
     @Override
     protected void doExecute() throws Exception {
+        infos.clearReusedCuboids();
         final CubeManager mgr = CubeManager.getInstance(config);
         final CubeInstance cube = mgr.getCube(CubingExecutableUtil.getCubeName(this.getParams())).latestCopyForWrite();
         final CubeSegment optimizeSegment = cube.getSegmentById(CubingExecutableUtil.getSegmentId(this.getParams()));
@@ -64,6 +67,8 @@ public class FilterRecommendCuboidJob extends SparkApplication {
         CubeSegment oldSegment = optimizeSegment.getCubeInstance().getOriginalSegmentToOptimize(optimizeSegment);
         Preconditions.checkNotNull(oldSegment,
                 "cannot find the original segment to be optimized by " + optimizeSegment);
+
+        infos.recordReusedCuboids(Collections.singleton(cube.getCuboidsByMode(CuboidModeEnum.RECOMMEND_EXISTING)));
 
         baseCuboid = cube.getCuboidScheduler().getBaseCuboidId();
         recommendCuboids = cube.getCuboidsRecommend();
@@ -89,5 +94,10 @@ public class FilterRecommendCuboidJob extends SparkApplication {
     public static void main(String[] args) {
         FilterRecommendCuboidJob filterRecommendCuboidJob = new FilterRecommendCuboidJob();
         filterRecommendCuboidJob.execute(args);
+    }
+
+    @Override
+    protected String generateInfo() {
+        return LogJobInfoUtils.filterRecommendCuboidJobInfo();
     }
 }

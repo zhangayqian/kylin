@@ -64,6 +64,7 @@ public class ResourceDetectBeforeOptimizingJob extends SparkApplication {
         CubeInstance cubeInstance = cubeManager.getCubeByUuid(cubeId);
         SegmentInfo segInfo = ManagerHub.getSegmentInfo(config, cubeId, segId);
         CubeSegment segment = cubeInstance.getSegmentById(segId);
+        infos.recordOptimizingSegment(segInfo);
 
         spanningTree = new ForestSpanningTree(JavaConversions.asJavaCollection(segInfo.toBuildLayouts()));
         segInfo.removeLayout(segment.getCuboidScheduler().getBaseCuboidId());

@@ -39,9 +39,11 @@ class BuildJobInfos {
   private val mergingSegments: java.util.List[SegmentInfo] = new util.LinkedList[SegmentInfo]
 
   // OPTIMIZE
+  private var optimizingSegment: SegmentInfo = null
+
   private val addCuboids: java.util.List[Long] = new util.LinkedList[Long]
 
-  private val deleteCuboids: java.util.List[Long] = new util.LinkedList[Long]
+  private val reusedCuboids: java.util.Set[Long] = new util.HashSet[Long]
 
   // COMMON
   private val abnormalLayouts: util.Map[Long, util.List[String]] = new util.HashMap[Long, util.List[String]]
@@ -87,24 +89,32 @@ class BuildJobInfos {
     mergingSegments.addAll(segments)
   }
 
+  def recordOptimizingSegment(segment: SegmentInfo): Unit = {
+    optimizingSegment = segment
+  }
+
+  def getOptimizingSegment(): SegmentInfo = {
+    optimizingSegment
+  }
+
+  def recordReusedCuboids(cuboids: util.Set[Long]): Unit = {
+    reusedCuboids.addAll(cuboids)
+  }
+
+  def getReusedCuboid(): util.Set[Long] = {
+    reusedCuboids
+  }
+
+  def clearReusedCuboids(): Unit = {
+    reusedCuboids.clear()
+  }
+
   def clearAddCuboids(): Unit = {
     addCuboids.clear()
   }
 
   def getAddCuboids: util.List[Long] = {
     addCuboids
-  }
-
-  def recordDeleteCuboids(cuboids: util.List[Long]): Unit = {
-    deleteCuboids.addAll(cuboids)
-  }
-
-  def clearDeleteCuboids(): Unit = {
-    deleteCuboids.clear()
-  }
-
-  def getDeleteCuboids: util.List[Long] = {
-    deleteCuboids
   }
 
   def recordAddCuboids(cuboids: util.List[Long]): Unit = {
