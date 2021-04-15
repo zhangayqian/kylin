@@ -25,7 +25,6 @@ import org.apache.kylin.engine.mr.common.CuboidStatsReaderUtil;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
 import org.apache.kylin.engine.mr.steps.UpdateCubeInfoAfterCheckpointStep;
 import org.apache.kylin.job.exception.ExecuteException;
-import org.apache.kylin.job.execution.AbstractExecutable;
 import org.apache.kylin.job.execution.ExecutableContext;
 import org.apache.kylin.job.execution.ExecuteResult;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
