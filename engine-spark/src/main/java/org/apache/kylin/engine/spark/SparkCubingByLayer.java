@@ -283,8 +283,13 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
 
         //encode dict-encoded measure-columns one by one
         for (MeasureDesc measureDesc : measuresRequireDict) {
-            measureEncodedRdd = measureEncodedRdd.map(new EncodeCuboidMeasure(cubeName, segmentId, metaUrl, sConf, Lists.newArrayList(measureDesc)));
+            EncodeCuboidMeasure encodeCuboidMeasure = new EncodeCuboidMeasure(cubeName, segmentId, metaUrl, sConf, Lists.newArrayList(measureDesc));
+            measureEncodedRdd = measureEncodedRdd.map(encodeCuboidMeasure);
             measureEncodedRdd.count();
+            logger.info("Print dict cache hit data: {}", measureDesc.getName());
+            for (Dictionary dict : encodeCuboidMeasure.baseCuboidBuilder.dictionaryMap.values()) {
+                dict.printlnStatistics();
+            }
         }
         //encode rest measure-columns
         List<MeasureDesc> remaining = new ArrayList<>();
