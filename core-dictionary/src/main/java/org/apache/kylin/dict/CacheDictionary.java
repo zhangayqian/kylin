@@ -76,8 +76,10 @@ public abstract class CacheDictionary<T> extends Dictionary<T> {
             byte[] valueBytes = bytes[seq];
             if (valueBytes != null) {
                 cacheHitCount++;
+                logger.info("Cache hit count {}", cacheHitCount);
             } else {
                 cacheMissCount++;
+                logger.info("Cache miss count {}", cacheMissCount);
                 valueBytes = getValueBytesFromIdWithoutCache(id);
                 //add it to cache
                 bytes[seq] = valueBytes;
