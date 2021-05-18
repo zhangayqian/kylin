@@ -53,9 +53,11 @@ public abstract class CacheDictionary<T> extends Dictionary<T> {
         try {
             if (this.valueToIdCache != null && roundingFlag == 0) {
                 cacheHitCount++;
-                logger.info("Cache hit count {}", cacheHitCount);
+                logger.info("getIdFromValueImpl Cache hit count {}", cacheHitCount);
                 return valueToIdCache.get(value);
             }
+            cacheHitCount++;
+            logger.info("getIdFromValueImpl Cache hit count {}", cacheHitCount);
         } catch (Exception th) {
             throw new IllegalArgumentException("Error to get Id From Value from Cache", th);
         }
