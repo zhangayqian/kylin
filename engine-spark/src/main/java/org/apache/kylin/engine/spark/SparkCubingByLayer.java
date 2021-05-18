@@ -487,6 +487,11 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
             for (Integer toBuildMeasureIdx : measureToBuild) {
                 tuple2._2[toBuildMeasureIdx] = baseCuboidBuilder.buildValueObject(toBuildMeasureIdx, tuple2._1());
             }
+
+            for(Dictionary<String> dict : baseCuboidBuilder.dictionaryMap.values()) {
+                dict.printlnStatistics();
+            }
+
             return tuple2;
         }
     }

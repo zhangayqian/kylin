@@ -54,7 +54,7 @@ public class BaseCuboidBuilder implements java.io.Serializable {
     protected CubeSegment cubeSegment;
     protected CubeJoinedFlatTableEnrich intermediateTableDesc;
     protected MeasureIngester<?>[] aggrIngesters;
-    protected Map<TblColRef, Dictionary<String>> dictionaryMap;
+    public Map<TblColRef, Dictionary<String>> dictionaryMap;
     protected AbstractRowKeyEncoder rowKeyEncoder;
     protected List<MeasureDesc> measureDescList;
     protected BufferedMeasureCodec measureCodec;

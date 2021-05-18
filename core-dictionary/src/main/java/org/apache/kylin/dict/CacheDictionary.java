@@ -26,10 +26,13 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.Dictionary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  */
 public abstract class CacheDictionary<T> extends Dictionary<T> {
+    protected static final Logger logger = LoggerFactory.getLogger(CacheDictionary.class);
     private static final long serialVersionUID = 1L;
 
     private transient LoadingCache<T, Integer> valueToIdCache;
@@ -99,6 +102,7 @@ public abstract class CacheDictionary<T> extends Dictionary<T> {
     }
 
     public final void enableCache() {
+        logger.info("Enable dictionary cache!", cacheMissCount, cacheHitCount);
         if (this.valueToIdCache == null) {
             this.valueToIdCache = CacheBuilder
                     .newBuilder().softValues().expireAfterAccess(30, TimeUnit.MINUTES)
