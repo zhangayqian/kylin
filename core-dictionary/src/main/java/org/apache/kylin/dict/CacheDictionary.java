@@ -53,6 +53,7 @@ public abstract class CacheDictionary<T> extends Dictionary<T> {
         try {
             if (this.valueToIdCache != null && roundingFlag == 0) {
                 cacheHitCount++;
+                logger.info("Cache hit count {}", cacheHitCount);
                 return valueToIdCache.get(value);
             }
         } catch (Exception th) {
