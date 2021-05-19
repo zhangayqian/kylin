@@ -41,6 +41,9 @@ public class JobStepFactory {
         case MERGING:
             step = new NSparkMergingStep(config.getSparkMergeClassName());
             break;
+        case MERGE_STATISTICS:
+            step = new NSparkMergeStatisticsStep();
+            break;
         case CLEAN_UP_AFTER_MERGE:
             step = new NSparkUpdateMetaAndCleanupAfterMergeStep();
             break;
