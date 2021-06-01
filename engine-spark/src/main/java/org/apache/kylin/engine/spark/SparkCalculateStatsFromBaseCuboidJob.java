@@ -40,6 +40,7 @@ import org.apache.kylin.common.util.OptionsHelper;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
+import org.apache.kylin.cube.cuboid.CuboidModeEnum;
 import org.apache.kylin.cube.cuboid.CuboidUtil;
 import org.apache.kylin.cube.kv.RowKeyDecoder;
 import org.apache.kylin.cube.model.CubeDesc;
@@ -155,6 +156,11 @@ public class SparkCalculateStatsFromBaseCuboidJob extends AbstractApplication im
                 nRowKey = cubeDesc.getRowkey().getRowKeyColumns().length;
 
                 Set<Long> cuboids = cube.getCuboidsByMode(jobMode);
+                if (cuboids.size() == 0) {
+                    Set<Long> current = cube.getCuboidsByMode(CuboidModeEnum.CURRENT);
+                    current.removeAll(cube.getCuboidsRecommend());
+                    cuboids = current;
+                }
                 cuboidIds = cuboids.toArray(new Long[cuboids.size()]);
                 allCuboidsBitSet = CuboidUtil.getCuboidBitSet(cuboidIds, nRowKey);
                 cubeStatsHLLPrecision = config.getCubeStatsHLLPrecision();
