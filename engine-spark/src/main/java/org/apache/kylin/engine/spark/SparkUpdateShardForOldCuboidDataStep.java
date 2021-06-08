@@ -173,7 +173,7 @@ public class SparkUpdateShardForOldCuboidDataStep extends AbstractApplication im
                     Text outputKey = new Text();
                     long cuboidID = rowKeySplitter.split(tuple2._1.getBytes());
 
-                    Cuboid cuboid = Cuboid.findForMandatory(cubeDesc, cuboidID);
+                    Cuboid cuboid = new Cuboid(cubeDesc, cuboidID, cuboidID);
                     int fullKeySize = buildKey(cuboid, rowKeySplitter.getSplitBuffers());
                     outputKey.set(newKeyBuf.array(), 0, fullKeySize);
                     return new Tuple2<Text, Text>(outputKey, tuple2._2);
