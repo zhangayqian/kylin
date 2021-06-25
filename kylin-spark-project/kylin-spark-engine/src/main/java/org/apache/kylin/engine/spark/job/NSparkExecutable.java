@@ -176,7 +176,7 @@ public class NSparkExecutable extends AbstractExecutable {
         try {
             String pathName = getId() + "_" + MetadataConstants.P_JOB_ID;
             Path tgtPath = new Path(getConfig().getJobTmpDir(getParams().get("project")), pathName);
-            FileSystem fileSystem = FileSystem.get(tgtPath.toUri(), HadoopUtil.getCurrentConfiguration());
+            FileSystem fileSystem = HadoopUtil.getWorkingFileSystem();
             try (BufferedOutputStream outputStream = new BufferedOutputStream(fileSystem.create(tgtPath))) {
                 outputStream.write(JsonUtil.writeValueAsBytes(getParams()));
             }
