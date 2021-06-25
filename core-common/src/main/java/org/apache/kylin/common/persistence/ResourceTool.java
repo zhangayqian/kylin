@@ -282,7 +282,8 @@ public class ResourceTool {
                     }
                 } catch (Exception ex) {
                     System.err.println("Failed to open " + path);
-                    logger.error(ex.getLocalizedMessage(), ex);
+                    logger.error("Failed to open " + path, ex);
+                    throw ex;
                 }
             }
         } else {
